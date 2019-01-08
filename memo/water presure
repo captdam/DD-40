@@ -1,0 +1,4 @@
+PVC/PPR pump could handle up to 2.0MPa (20 bar, 200m), which is OK for the project. The PVC piples could be used as the ROV body.
+
+All external devices needs to be IPx9 standard. Or, submersible with 50m (better 100m) deep water.
+Note: wire connector need to be sealable and satisfied with IPx9 standard. Otherwise, current may flow through lake water between pins.
