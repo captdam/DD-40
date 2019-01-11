@@ -1,0 +1,20 @@
+Sensor list:
+
+Presure sensor
+  0bar - 10bar, may dive deeper than design
+
+Speed sensor ???(Hard to mesure water speed, especially at low speed)
+  3-axis
+ 
+Voltage sensor
+  Monitor battery voltage
+
+Gyro + Accelerometer
+  MPU6500 <-- programming finished
+
+Compass
+  GPS not required (in water, hard to get signal)
+
+Water/Wetness sensor
+  Protect water leakage of the ROV body
+  If water leak, send alert
