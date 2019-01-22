@@ -2,6 +2,9 @@ Sensor list:
 
 Presure sensor
   0bar - 10bar, may dive deeper than design
+    Reference table
+    050m deep = 05atm = 05bar = 075psi = 0500kPa = 05000hPa (05k)
+    100m deep = 10atm = 10bar = 150psi = 1000kPa = 10000hPa (10k)
 
 Speed sensor ???(Hard to mesure water speed, especially at low speed)
   3-axis
