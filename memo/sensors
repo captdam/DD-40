@@ -7,16 +7,14 @@ Presure sensor
     100m deep = 10atm = 10bar = 150psi = 1000kPa = 10000hPa (10k)
 
 Speed sensor ???(Hard to mesure water speed, especially at low speed)
-  3-axis
+  Flow gauge * 3 (3-axis)
  
 Voltage sensor
-  Monitor battery voltage
+  Monitor battery voltage (Using voltage divider + ADC)
 
-Gyro + Accelerometer
-  MPU6500 <-- programming finished
-
-Compass
-  GPS not required (in water, hard to get signal)
+Gyro + Accelerometer + Temp + Mag(compass)
+  MPU-9250
+  GPS not required (in water, hard to get GPS signal)
 
 Water/Wetness sensor
   Protect water leakage of the ROV body
