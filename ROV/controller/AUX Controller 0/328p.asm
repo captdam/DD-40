@@ -130,7 +130,7 @@ INI:
 	LDI	R16, 0b00000000
 	OUT	PORTC, R16
 
-	LDI	R16, 0b00111111			;PB =	In	In	SCK	SPI-SDI	SPI-SDO	Out(SS)	Out(SS)	Out(SS)
+	LDI	R16, 0b00101111			;PB =	In	In	SCK	SPI-SDI	SPI-SDO	Out(SS)	Out(SS)	Out(SS)
 	OUT	DDRB, R16
 	LDI	R16, 0b00000111
 	OUT	PORTB, R16
@@ -146,9 +146,7 @@ INI:
 	STS	UCSR0C, R16
 
 	;Setup SPI
-;	LDI	R16, 0b01010011			;No interrupt, SPI enable, MSB first, as masrter, mode0, 1/128 speed
-;	OUT	SPCR, R16
-	LDI	R16, 0b00010011			;No interrupt, SPI enable, MSB first, as masrter, mode0, 1/128 speed
+	LDI	R16, 0b01010011			;No interrupt, SPI enable, MSB first, as masrter, mode0, 1/128 speed
 	OUT	SPCR, R16
 
 
@@ -157,34 +155,38 @@ INI:
 
 ; Main function
 MAIN:	
-;	CBI	PORTB, 5
-;	NOP
-;	SBI	PORTB, 5
-;	NOP
-;	JMP	MAIN
+	JMP	MAIN
 
 	CBI	PORTB, 1			;Pull down SS, address = 010
 	
-	LDI	R16, 'S'
-	CALL	FUNC_USATR_SENDCHAR
+	LDI	R16, 0b10011010
+	OUT	SPDR, R16			;Write to SPI buffer
+	func_spi_sendchar_finish:
+	IN	R16, SPSR			;Busy wait SPI to be fully send out
+	SBRS	R16, SPIF
+	JMP	func_spi_sendchar_finish
+;	CALL	FUNC_SPI_SENDCHAR
+	
+;	SBI	PORTB, 1
+	JMP	END
 
-	LDI	R16, 0b01010101			;Send data via SPI
+	LDI	R16, 0b11111111			;Send data via SPI
 	CALL	FUNC_SPI_SENDCHAR
 	
-	LDI	R16, '2'
-	CALL	FUNC_USATR_SENDCHAR
+;	LDI	R16, '2'
+;	CALL	FUNC_USATR_SENDCHAR
 
-	LDI	R16, 0b00110011
+	LDI	R16, 0b11111111
 	CALL	FUNC_SPI_SENDCHAR
 	
-	LDI	R16, '1'
-	CALL	FUNC_USATR_SENDCHAR
+;	LDI	R16, '1'
+;	CALL	FUNC_USATR_SENDCHAR
 
-	LDI	R16, 0b10101010
+	LDI	R16, 0b11111111
 	CALL	FUNC_SPI_SENDCHAR
 	
-	LDI	R16, '0'
-	CALL	FUNC_USATR_SENDCHAR
+;	LDI	R16, '0'
+;	CALL	FUNC_USATR_SENDCHAR
 
 	SBI	PORTB, 1			;Unselect SPI slave
 	
@@ -199,6 +201,35 @@ END:
 
 VEC_USART_RXC:
 	LDS	R16, UDR0
-	INC	R16
+	MOV	R15, R16
 	CALL	FUNC_USATR_SENDCHAR
+
+	CBI	PORTB, 1			;Pull down SS, address = 010
+	
+	MOV	R16, R15
+;	CALL	FUNC_SPI_SENDCHAR
+	OUT	SPDR, R16			;Write to SPI buffer
+	func_spi_sendchar_finish2:
+	IN	R16, SPSR			;Busy wait SPI to be fully send out
+	SBRS	R16, SPIF
+	JMP	func_spi_sendchar_finish2
+	
+	MOV	R16, R15
+;	CALL	FUNC_SPI_SENDCHAR
+	OUT	SPDR, R16			;Write to SPI buffer
+	func_spi_sendchar_finish1:
+	IN	R16, SPSR			;Busy wait SPI to be fully send out
+	SBRS	R16, SPIF
+	JMP	func_spi_sendchar_finish1
+	
+	MOV	R16, R15
+;	CALL	FUNC_SPI_SENDCHAR
+	OUT	SPDR, R16			;Write to SPI buffer
+	func_spi_sendchar_finish0:
+	IN	R16, SPSR			;Busy wait SPI to be fully send out
+	SBRS	R16, SPIF
+	JMP	func_spi_sendchar_finish0
+	
+	SBI	PORTB, 1
+	
 	RETI
