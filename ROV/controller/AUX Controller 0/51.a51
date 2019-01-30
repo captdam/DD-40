@@ -1,7 +1,20 @@
 ; Software SPI slave updating P0, P1, P3
 ; MSB first
 ; P2 first, then P1, then P0
-; Sample at SCLK rising edge (SPI mode3)
+; Sample at SCLK rising edge (SPI mode0)
+
+; Pin layout:
+; P0, P1, P3: digital output
+; P3.0, P3.1: debug use (UART @ 2400)
+; P3.2: SCLK
+; P3.3: /SS
+; P3.4: SDI (MOSI)
+; P3.5: SDO (MISO), not used
+; P3.6: Idel indicator (active high)
+; P3.7: Not used
+
+; Debug interface:
+; Baud = 2400 @ 12MHz
 
 ;SFR - STC89C52RC
 	XICON		EQU	0xC0
@@ -38,10 +51,21 @@
 	SS		EQU	P3.3
 	SDI		EQU	P3.4
 	SDO		EQU	P3.5
+	ISIDEL		EQU	P3.6
 		
 	SYSCLK		EQU	10000			;*100
 	BAUD		EQU	24			;*100
 	UART_RELOAD	EQU	-(SYSCLK/BAUD/32)	;Crys = 12M, Baud = 2400, Mode = 1 (no parrty)
+	
+;App RAM
+	BUFFER_HEAD	EQU	0x48			;Not used
+	BUFFER_P27	EQU	0x47
+		;
+		;
+		;
+	BUFFER_P20	EQU	0x40
+	BUFFER_P10	EQU	0x38
+	BUFFER_P00	EQU	0x30
 	
 ;Interrupt vector map
 ORG	0x0000
@@ -69,9 +93,9 @@ INI:							;Boot setup
 	MOV	P2, #0x00
 	MOV	P3, #0xFF				;Communication/Control IO pull high
 	
-	SETB	EX1					;Enable INT1 (P3.3, SS), on falling trigger
-;	SETB	IT1
-	SETB	PX1					;Pirority
+	SETB	EX1					;Enable INT1 (P3.3, SS), on falling trigger, high pirority
+	SETB	IT1
+	SETB	PX1
 		
 	MOV	SCON, #0x40				;UART mode1 (8-bit, flex baud), disable read
 	SETB	ES
@@ -84,10 +108,9 @@ INI:							;Boot setup
 	SETB	EA
 
 IDEL:							;Wait for command
+	SETB	ISIDEL					;Set flag
 	MOV	PCON, #0x20				;Chip powerdown
-	JMP	$					;Busy wait until power down. Power-up by interrupt, PC will be moved to next line in the interrupt
-;	JB	SS, $;;;;;;;;;;;;
-;	CALL	INT_1
+	JB	ISIDEL, $				;Busy wait until power down. Power-up by interrupt, flag will be clear in the interrupt
 	JMP	IDEL
 	
 	
@@ -108,82 +131,68 @@ INT_1:							;Chip selected (for faster response, using busy wait without subrou
 	; XRAM[8] = 0x01, XRAM[7] = 0x00, XRAM[6] = 0x00, XRAM[5] = 0x00, XRAM[4] = 0x01, XRAM[3] = 0x01, XRAM[2] = 0x01, XRAM[1] = 0x00
 	
 	receive_ini:
-	MOV	R0, #DATALENGTH				;Ini, bit counter
+	MOV	R0, #BUFFER_HEAD			;Ini buffer pointer
 	
 	receive_bit_ini:
-	CLR	A
+	DEC	R0
 	
 	receive_bit_waitrise:
 	JB	SS, spi_end				;SS unselected, go to end
 	JNB	SCLK, receive_bit_waitrise		;Wait for SCLK rising
 	
 	receive_bit_sample:
-	JNB	SDI, receive_bit_low			;If receive low, do nothing; if high, write high
-	MOV	A, 0x01
+	JNB	SDI, receive_bit_low			;If receive low, write 0; if high, write 1
+	MOV	@R0, #0x01
+	JMP	receive_bit_waitfall
 	receive_bit_low:
-	MOVX	@R0, A					;Save current bit in XRAM
+	MOV	@R0, #0x00
 	
 	receive_bit_waitfall:
 	JB	SS, spi_end
 	JB	SCLK, receive_bit_waitfall
 	
-	DJNZ	R0, receive_bit_ini			;Receive all bits
+	CJNE	R0, #BUFFER_P00, receive_bit_ini	;Receive all bits
 	
-	MOV	R0, #DATALENGTH_MAX
-	debug_scan:
-	MOVX	A, @R0
-	MOV	SBUF, A
-;	PUSH	ACC
-;	POP	SBUF
-	JNB	TI, $
-	CLR	TI
-	DJNZ	R0, debug_scan
+;	; DEBUG INTERFACE ;
+;	; This will show all the intermedia data saved in the SPI buffer
+;	MOV	R0, #BUFFER_HEAD
+;	debug_scan:
+;	DEC	R0
+;	MOV	SBUF, @R0
+;	JNB	TI, $
+;	CLR	TI
+;	CJNE	R0, #BUFFER_P00, debug_scan
+;	; END OF DEBUG INTERFACE ;
 	
 	process_ini:
 	MOV	R0, #DATALENGTH_MAX			;Assume DATALENGTH is the MAX (3 bytes)
 	
+	CLR	A					;Clear ACC (output buffer)
 	process_byte2:
-	MOV	R1, #8
-	CLR	A
-	process_bit2:
-	RL	A
-	MOVX	A, @R0
-	ADD	A, R2
-	MOV	R2, A
-	DJNZ	R1, process_bit2
+	DEC	R0					;Get next bit in SPI buffer
+	RL	A					;Next next bit in output buffer
+	ADD	A, @R0					;Move current bit from SPI buffer to output buffer (+1 = set, +0 = keep low)
+	CJNE	R0, #BUFFER_P20, process_byte2		;Finish this byte, move output buffer to IO
 	MOV	P2, A
 	
-	process_byte1:
-	MOV	R1, #8
 	CLR	A
-	process_bit1:
+	process_byte1:
+	DEC	R0
 	RL	A
-	MOVX	A, @R0
-	ADD	A, R2
-	MOV	R2, A
-	DJNZ	R1, process_bit1
+	ADD	A, @R0
+	CJNE	R0, #BUFFER_P10, process_byte1
 	MOV	P1, A
 	
-	process_byte0:
-	MOV	R1, #8
 	CLR	A
-	process_bit0:
+	process_byte0:
+	DEC	R0
 	RL	A
-	MOVX	A, @R0
-	ADD	A, R2
-	MOV	R2, A
-	DJNZ	R1, process_bit0
-	MOV	P2, A
+	ADD	A, @R0
+	CJNE	R0, #BUFFER_P00, process_byte0
+	MOV	P0, A
 	
 	spi_end:
-	POP	B					;Modify return address to skip JMP$
-	POP	ACC
-	ADD	A, #0x02
-	PUSH	ACC
-	MOV	A, B
-	ADDC	A, #0x00
-	PUSH	ACC
-	
+	CLR	ISIDEL					;Clear carry (this is a flag, see main routine)
 	RETI
 
 TIMER_1:
@@ -191,7 +200,6 @@ TIMER_1:
 	RETI
 
 UART:
-;	CLR	TI
 	CLR	RI
 	RETI
 
