@@ -157,42 +157,6 @@ INI:
 MAIN:	
 	JMP	MAIN
 
-	CBI	PORTB, 1			;Pull down SS, address = 010
-	
-	LDI	R16, 0b10011010
-	OUT	SPDR, R16			;Write to SPI buffer
-	func_spi_sendchar_finish:
-	IN	R16, SPSR			;Busy wait SPI to be fully send out
-	SBRS	R16, SPIF
-	JMP	func_spi_sendchar_finish
-;	CALL	FUNC_SPI_SENDCHAR
-	
-;	SBI	PORTB, 1
-	JMP	END
-
-	LDI	R16, 0b11111111			;Send data via SPI
-	CALL	FUNC_SPI_SENDCHAR
-	
-;	LDI	R16, '2'
-;	CALL	FUNC_USATR_SENDCHAR
-
-	LDI	R16, 0b11111111
-	CALL	FUNC_SPI_SENDCHAR
-	
-;	LDI	R16, '1'
-;	CALL	FUNC_USATR_SENDCHAR
-
-	LDI	R16, 0b11111111
-	CALL	FUNC_SPI_SENDCHAR
-	
-;	LDI	R16, '0'
-;	CALL	FUNC_USATR_SENDCHAR
-
-	SBI	PORTB, 1			;Unselect SPI slave
-	
-	LDI	R16, 'E'
-	CALL	FUNC_USATR_SENDCHAR
-
 ; End of app
 END:
 	JMP	END
@@ -207,7 +171,6 @@ VEC_USART_RXC:
 	CBI	PORTB, 1			;Pull down SS, address = 010
 	
 	MOV	R16, R15
-;	CALL	FUNC_SPI_SENDCHAR
 	OUT	SPDR, R16			;Write to SPI buffer
 	func_spi_sendchar_finish2:
 	IN	R16, SPSR			;Busy wait SPI to be fully send out
@@ -215,7 +178,6 @@ VEC_USART_RXC:
 	JMP	func_spi_sendchar_finish2
 	
 	MOV	R16, R15
-;	CALL	FUNC_SPI_SENDCHAR
 	OUT	SPDR, R16			;Write to SPI buffer
 	func_spi_sendchar_finish1:
 	IN	R16, SPSR			;Busy wait SPI to be fully send out
@@ -223,7 +185,6 @@ VEC_USART_RXC:
 	JMP	func_spi_sendchar_finish1
 	
 	MOV	R16, R15
-;	CALL	FUNC_SPI_SENDCHAR
 	OUT	SPDR, R16			;Write to SPI buffer
 	func_spi_sendchar_finish0:
 	IN	R16, SPSR			;Busy wait SPI to be fully send out
