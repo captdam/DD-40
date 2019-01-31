@@ -16,6 +16,8 @@
 ; Debug interface:
 ; Baud = 2400 @ 12MHz
 
+#define DEBUG 1
+
 ;SFR - STC89C52RC
 	XICON		EQU	0xC0
 	T2CON		EQU	0xC8
@@ -108,7 +110,7 @@ INI:							;Boot setup
 	SETB	EA
 
 IDEL:							;Wait for command
-	SETB	ISIDEL					;Set flag
+	CLR	ISIDEL					;Set flag
 	MOV	PCON, #0x20				;Chip powerdown
 	JB	ISIDEL, $				;Busy wait until power down. Power-up by interrupt, flag will be clear in the interrupt
 	JMP	IDEL
@@ -142,10 +144,10 @@ INT_1:							;Chip selected (for faster response, using busy wait without subrou
 	
 	receive_bit_sample:
 	JNB	SDI, receive_bit_low			;If receive low, write 0; if high, write 1
-	MOV	@R0, #0x01
+	MOV	@R0, 0x01
 	JMP	receive_bit_waitfall
 	receive_bit_low:
-	MOV	@R0, #0x00
+	MOV	@R0, 0x00
 	
 	receive_bit_waitfall:
 	JB	SS, spi_end
@@ -153,16 +155,15 @@ INT_1:							;Chip selected (for faster response, using busy wait without subrou
 	
 	CJNE	R0, #BUFFER_P00, receive_bit_ini	;Receive all bits
 	
-;	; DEBUG INTERFACE ;
-;	; This will show all the intermedia data saved in the SPI buffer
-;	MOV	R0, #BUFFER_HEAD
-;	debug_scan:
-;	DEC	R0
-;	MOV	SBUF, @R0
-;	JNB	TI, $
-;	CLR	TI
-;	CJNE	R0, #BUFFER_P00, debug_scan
-;	; END OF DEBUG INTERFACE ;
+	#if (DEBUG == 1)
+	MOV	R0, #BUFFER_HEAD			;This will show all the intermedia data saved in the SPI buffer
+	debug_scan:
+	DEC	R0
+	MOV	SBUF, @R0
+	JNB	TI, $
+	CLR	TI
+	CJNE	R0, #BUFFER_P00, debug_scan
+	#endif
 	
 	process_ini:
 	MOV	R0, #DATALENGTH_MAX			;Assume DATALENGTH is the MAX (3 bytes)
@@ -192,7 +193,7 @@ INT_1:							;Chip selected (for faster response, using busy wait without subrou
 	MOV	P0, A
 	
 	spi_end:
-	CLR	ISIDEL					;Clear carry (this is a flag, see main routine)
+	SETB	ISIDEL					;Clear carry (this is a flag, see main routine)
 	RETI
 
 TIMER_1:
