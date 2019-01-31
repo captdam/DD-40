@@ -16,7 +16,7 @@
 ; Debug interface:
 ; Baud = 2400 @ 12MHz
 
-#define DEBUG 1
+#define DEBUG 0
 
 ;SFR - STC89C52RC
 	XICON		EQU	0xC0
@@ -144,10 +144,10 @@ INT_1:							;Chip selected (for faster response, using busy wait without subrou
 	
 	receive_bit_sample:
 	JNB	SDI, receive_bit_low			;If receive low, write 0; if high, write 1
-	MOV	@R0, 0x01
+	MOV	@R0, #0x01
 	JMP	receive_bit_waitfall
 	receive_bit_low:
-	MOV	@R0, 0x00
+	MOV	@R0, #0x00
 	
 	receive_bit_waitfall:
 	JB	SS, spi_end
@@ -155,7 +155,7 @@ INT_1:							;Chip selected (for faster response, using busy wait without subrou
 	
 	CJNE	R0, #BUFFER_P00, receive_bit_ini	;Receive all bits
 	
-	#if (DEBUG == 1)
+	#if (DEBUG != 0)
 	MOV	R0, #BUFFER_HEAD			;This will show all the intermedia data saved in the SPI buffer
 	debug_scan:
 	DEC	R0
