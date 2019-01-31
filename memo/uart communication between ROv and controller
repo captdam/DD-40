@@ -1,0 +1,8 @@
+Message via USART RS-485 like. ROV MCU and controller CPU is 5 voltage, cable is 12V.
+
+Full-duplex
+  I2C like
+  Control --> ROV
+    PackageType(2,MCU_APPSFR/SYSCALL/I2C/SPI)+Length(6) - R/W(1)+Address(7) - Data(8) - R/W(1)+Address - Data(8) - ...... - Checksum(8)
+  Control <-- ROV
+    
