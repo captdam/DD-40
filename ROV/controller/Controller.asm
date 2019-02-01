@@ -32,8 +32,8 @@
 
 ; SRAM Static data
 .DSEG
-.ORG	0x0100					;App SFR tables (0x0100 - 0x017F)
-	AUTOPILOT_MODE:	.BYTE	1		;EnginePower - Forward/Backward - Left/Right - Yaw - Up/Down - Pitch
+.ORG	0x0100					;App SFR tables (0x0100 - 0x017F), see register table
+	AUTOPILOT_MODE:	.BYTE	1
 	ENGINE_POWER:	.BYTE	1
 	FB_VALVE:	.BYTE	1
 	LR_VALVE:	.BYTE	1
@@ -41,18 +41,20 @@
 	LED:		.BYTE	1
 	PRESSURE_REAL:	.BYTE	2
 	PRESSURE_DEST:	.BYTE	2
-	ACCEL_X_REAL:	.BYTE	2
-	ACCEL_X_DEST:	.BYTE	2
-	ACCEL_Y_REAL:	.BYTE	2
-	ACCEL_Y_DEST:	.BYTE	2
-	ACCEL_Z_REAL:	.BYTE	2
-	ACCEL_Z_DEST:	.BYTE	2
+	ACCEL_X:	.BYTE	2
+	ACCEL_Y:	.BYTE	2
+	ACCEL_Z:	.BYTE	2
+	PITCH_REAL:	.BYTE	2
+	PITCH_DEST:	.BYTE	2
+	YAW_REAL:	.BYTE	2
+	YAW_DEST:	.BYTE	2
 	MAG_X:		.BYTE	2
 	MAG_Y:		.BYTE	2
 	MAG_Z:		.BYTE	2
 	COMPASS_REAL:	.BYTE	2
 	COMPASS_DEST:	.BYTE	2
 	TEMPERATURE:	.BYTE	2
+	BAT_VOLTAGE:	.BYTE	2
 
 .ORG	0x0180					;Static variables (0x0180 - 0x01FF)
 	
@@ -112,7 +114,10 @@ INI:
 	OUT	SPH, R16
 	LDI	R16, LOW(RAMEND)
 	OUT	SPL, R16
-
+	
+	;Setup buffer pointer
+	LDI	
+	
 	;Setup interrupt mode
 ;	LDI	R16, 0x02
 ;	OUT	MCUCR, R16
