@@ -3,7 +3,7 @@
 33,21,,LR_VALVE,RW,Left/right valve,Compass,Pre-Comp,,,HeadLeft,HeadRight,TailLeft,TailRight,TurnLeft=B3|B0|(B3+B0); ShiftLeft=B3+B1
 34,22,,UD_VALVE,RW,Up/down valve,Pitch,Pressure,Pre-Pitch,Pre-Press,HeadUp,HeadDownTailUp,,TailDown,PitchUp=B3|B0|(B3+B0); ShiftUp=(B3+B1)|B3(corrected by g/b force)|B1 (coorected by g/b force)
 35,23,,LED,RW,LED,LightL,LightC,LightR,Navi,,,,,
-36,24,,,,,,,,,,,,,
+36,24,,GPIO,RW,digital pins,D7,D6,D5,D4,D3,D2,B7,B6,
 37,25,,,,,,,,,,,,,
 38,26,,,,,,,,,,,,,
 39,27,,,,,,,,,,,,,
