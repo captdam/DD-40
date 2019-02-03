@@ -42,21 +42,21 @@
 	.EQU	RX_BUFFER_SIZE	=	0x80 - 2
 	RX_BUFFER:	.BYTE	RX_BUFFER_SIZE
 	RX_POINTER:	.BYTE	2		;Pointer, points to the next valve
-	.EQU	RX_PACKAGE_SIZE	=	12
-	;	FB_VALVE	LR_VALVE	UD_VALVE	LED		GPIO
+	.EQU	RX_PACKAGE_SIZE	=	13
+	;	FB_VALVE	LR_VALVE	UD_VALVE	LED		C_OUT
 	;	ENGINE_POWER	PRESSURE_DEST_L	PRESSURE_DEST_H	PITCH_DEST_L	PITCH_DEST_H
-	;	COMPASS_DEST_L	COMPASS_DEST_H
+	;	COMPASS_DEST_L	COMPASS_DEST_H	C_PWM
 
 .ORG	0x0180
 	.EQU	TX_BUFFER_SIZE	=	0x80 - 2
 	TX_BUFFER:	.BYTE	TX_BUFFER_SIZE
 	TX_POINTER:	.BYTE	2
-	.EQU	TX_PACKAGE_SIZE	=	22
-	;	FB_VALVE	LR_VALVE	UD_VALVE	LED		GPIO
+	.EQU	TX_PACKAGE_SIZE	=	23
+	;	FB_VALVE	LR_VALVE	UD_VALVE	LED		C_OUT
 	;	ENGINE_POWER	PRESSURE_REAL_L	PRESSURE_REAL_H PRESSURE_DEST_L	PRESSURE_DEST_H
 	;	PITCH_REAL_L	PITCH_REAL_H	PITCH_DEST_L	PITCH_DEST_H	COMPASS_REAL_L
 	;	COMPASS_REAL_H	COMPASS_DEST_L	COMPASS_DEST_H	TEMPERATURE_L	TEMPERATURE_H
-	;	BAT_VLOTAGE_L	BAT_VLOTAGE_H
+	;	BAT_VLOTAGE_L	BAT_VLOTAGE_H	C_PWM
 
 .ORG	0x0200					;App SFR tables (0x0100 - 0x017F), see register table
 	.org 0x0220
@@ -64,7 +64,7 @@
 	LR_VALVE:	.BYTE	1
 	UD_VALVE:	.BYTE	1
 	LED:		.BYTE	1
-	GPIO:		.BYTE	1
+	C_OUT:		.BYTE	1
 	.org 0x0230
 	ENGINE_POWER:	.BYTE	1
 	PRESSURE_REAL:	.BYTE	2
@@ -81,9 +81,10 @@
 	COMPASS_DEST:	.BYTE	2
 	TEMPERATURE:	.BYTE	2
 	BAT_VOLTAGE:	.BYTE	2
+	C_PWM:		.BYTE	1
 
 .ORG	0x0280
-	;xxx
+	PHASE:		.BYTE	1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;                   CODE  SEG                   ;
@@ -133,13 +134,13 @@ INI:
 	;Setup Tx/Rx buffer pointer
 	LDI	R17, HIGH(RX_BUFFER)		;Get address of the buffer
 	LDI	R16, LOW(RX_BUFFER)
-	STS	HIGH(RX_POINTER), R17		;Set pointer's value to the beginning of the buffer
-	STS	LOW(RX_POINTER), R16
+	STS	RX_POINTER+1, R17		;Set pointer's value to the beginning of the buffer
+	STS	RX_POINTER, R16
 	
 	LDI	R17, HIGH(TX_BUFFER)
 	LDI	R16, LOW(TX_BUFFER)
-	STS	HIGH(TX_POINTER), R17
-	STS	LOW(TX_POINTER), R16
+	STS	TX_POINTER+1, R17
+	STS	TX_POINTER, R16
 
 	;Setup interrupt mode
 ;	LDI	R16, 0x02
@@ -157,19 +158,19 @@ INI:
 	STS	CLKPR, R16
 
 	;Setup pin direction
-	LDI	R16, 0b11111100			;PD =	Out	Out	Out	Out	Out	Out	Tx	Rx
+	LDI	R16, 0b11111100			;PD =	Out7	Out6	Out5	Out4	Out3	Out2	Tx	Rx
 	OUT	DDRD, R16
 	LDI	R16, 0b11111100
 	OUT	PORTD, R16
 
-	LDI	R16, 0b00000000			;PC =	X	RESET	SCL	SDA	In-ADC	In-ADc	In-ADC	In-ADC
+	LDI	R16, 0b00000000			;PC =	X	RESET	SCL	SDA	Pres	B_Vol	In1	In0
 	OUT	DDRC, R16
 	LDI	R16, 0b00000000
 	OUT	PORTC, R16
 
-	LDI	R16, 0b00101111			;PB =	In	In	SCK	SPI-SDI	SPI-SDO	Out(SS)	Out(SS)	Out(SS)
+	LDI	R16, 0b11101111			;PB =	Out1	Out0	SCK	SPI-SDI	SPI-SDO	PWM	C_PWM	/AUX
 	OUT	DDRB, R16
-	LDI	R16, 0b00000111
+	LDI	R16, 0b00000001
 	OUT	PORTB, R16
 
 	;Setup USART communication with operator-side controller
@@ -177,15 +178,52 @@ INI:
 	STS	UBRR0H, R16
 	LDI	R16, LOW(USART_SCALE)
 	STS	UBRR0L, R16
-	LDI	R16, 0b10011000			;Enable Tx/Rx and Rx interrupt, 8 bits data
+	LDI	R16, 0b11011000			;Enable Tx/Rx and Rx/Tx interrupt, 8 bits data
 	STS	UCSR0B, R16
-	LDI	R16, 0b00001110			;Async USART (UART), no parity, 2 stop bits, 8 bits data
+	LDI	R16, 0b00000110			;Async USART (UART), no parity, 1 stop bit, 8 bits data
 	STS	UCSR0C, R16
 
 	;Setup SPI
 	LDI	R16, 0b01010011			;No interrupt, SPI enable, MSB first, as masrter, mode0, 1/128 speed
 	OUT	SPCR, R16
 
+;;;	;Ini app SFR (FOR TEST)
+	.MACRO	INIDATA_MACRO
+	LDI	R16, @0
+	STS	@1, R16
+	.ENDMACRO
+
+	INIDATA_MACRO	0x30, FB_VALVE
+	INIDATA_MACRO	0x31, LR_VALVE
+	INIDATA_MACRO	0x32, UD_VALVE
+	INIDATA_MACRO	0x33, LED
+	INIDATA_MACRO	0x34, C_OUT
+	INIDATA_MACRO	0x35, ENGINE_POWER
+	INIDATA_MACRO	0x36, PRESSURE_REAL
+	INIDATA_MACRO	0x37, PRESSURE_REAL+1
+	INIDATA_MACRO	0x38, PRESSURE_DEST
+	INIDATA_MACRO	0x39, PRESSURE_DEST+1
+	INIDATA_MACRO	0x41, PITCH_REAL
+	INIDATA_MACRO	0x42, PITCH_REAL+1
+	INIDATA_MACRO	0x43, PITCH_DEST
+	INIDATA_MACRO	0x44, PITCH_DEST+1
+	INIDATA_MACRO	0x45, COMPASS_REAL
+	INIDATA_MACRO	0x46, COMPASS_REAL+1
+	INIDATA_MACRO	0x47, COMPASS_DEST
+	INIDATA_MACRO	0x48, COMPASS_DEST+1
+	INIDATA_MACRO	0x49, TEMPERATURE
+	INIDATA_MACRO	0x4A, TEMPERATURE+1
+	INIDATA_MACRO	0x4B, BAT_VOLTAGE
+	INIDATA_MACRO	13, BAT_VOLTAGE+1
+	INIDATA_MACRO	10, C_PWM
+
+	;Setup ROV phase timer
+	LDI	R16, 8
+	STS	PHASE, R16
+	LDI	R16, 0b00000101			;Timer2 scale set to 1024
+	STS	TCCR2B, R16
+	LDI	R16, 0b00000001			;Enable timer2 overflow interrupt
+	STS	TIMSK2, R16
 
 	SEI					;Ini done, enable interrupt
 
@@ -195,7 +233,133 @@ MAIN:
 
 
 
-;	JMP	MAIN
+	JMP	MAIN
+
+VEC_TIM2_OVF:
+	;This timer overflow interrupt is the main cycle of the ROV
+	SEI
+	
+	;Reset timer
+	LDI	R16, 0xFF - 244			;1024 * 244 / 8MHz ~= 250k/8M = 1/32 (32 triggers pre 1s, 8 triggers pre 1/4s)
+	STS	TCNT2, R16
+	SBI	PINB, 2
+
+	;Changing phase
+	LDS	R16, PHASE
+	INC	R16
+	STS	PHASE, R16
+
+	;Call phase function
+	ANDI	R16, 0b00000111			;There is 8 phases (0~7)
+	BREQ	phase_datatransfer		;Phase 0:	datatransfer
+	SBRC	R16, 0				;Phase 2,4,6:	apply (skip next line)
+	JMP	phase_scan			;Otherwise:	scan
+	
+	phase_apply:
+	CALL	APPLY
+	JMP	phase_end
+
+	phase_scan:
+	CALL	SCAN
+	JMP	phase_end
+
+	phase_datatransfer:
+	CALL	DATATRANSFER
+	JMP	phase_end
+
+	phase_end:
+	RETI
+
+	
+; Receive command byte from controller
+VEC_USART_RXC:
+	PUSH	R27
+	PUSH	R26
+	PUSH	R16
+	LDS	R16, SREG
+	PUSH	R16
+	SEI
+
+	LDS	R27, RX_POINTER+1		;Get the buffer pointer in RX
+	LDS	R26, RX_POINTER
+
+	LDS	R16, UDR0			;Move data from USART port to the buffer
+	ST	X+, R16
+
+	STS	RX_POINTER+1, R27		;Update pointer
+	STS	RX_POINTER, R26
+
+	POP	R16
+	STS	SREG, R16
+	POP	R16
+	POP	R26
+	POP	R27
+	RETI
+
+	
+; Send data byte to controller
+VEC_USART_TXC:
+	PUSH	R27
+	PUSH	R26
+	PUSH	R16
+	LDS	R16, SREG
+	PUSH	R16
+	SEI
+
+	LDS	R27, TX_POINTER+1		;Get the buffer pointer in TX
+	LDS	R26, TX_POINTER
+
+	LDI	R16, LOW(TX_BUFFER)+TX_PACKAGE_SIZE+1
+	CP	R16, R26
+	BREQ	vec_usart_udre_end		;Pointer reaches end of query
+
+	LD	R16, X+				;Move data from buffer to the UASRT port
+	STS	UDR0, R16
+
+	STS	TX_POINTER+1, R27		;Update pointer
+	STS	TX_POINTER, R26
+
+	vec_usart_udre_end:
+	POP	R16
+	STS	SREG, R16
+	POP	R16
+	POP	R26
+	POP	R27
+	RETI
+
+
+; Unused vector ----------------------------------------------
+
+;VEC_RESET:
+VEC_EXT_INT0:
+VEC_EXT_INT1:
+VEC_PCINT0:
+VEC_PCINT1:
+VEC_PCINT2:
+VEC_WDT:
+VEC_TIM2_COMPA:
+VEC_TIM2_COMPB:
+;VEC_TIM2_OVF:
+VEC_TIM2_CAPT:
+VEC_TIM1_COMPA:
+VEC_TIM1_COMPB:
+VEC_TIM1_OVF:
+VEC_TIM0_COMPA:
+VEC_TIM0_COMPB:
+VEC_TIM0_OVF:
+VEC_SPI_STC:
+;VEC_USART_RXC:
+VEC_USART_UDRE:
+;VEC_USART_TXC:
+VEC_ADC:
+VEC_EE_RDY:
+VEC_ANA_COMP:
+VEC_TWI:
+VEC_SPM_RDY:
+	JMP	VEC_RESET
+
+; Subroutines ----------------------------------------------
+
 
 ; Phase user input, update app SFR, scan app SFR, send data to user
 DATATRANSFER:
@@ -207,6 +371,8 @@ DATATRANSFER:
 	PUSH	R26
 	PUSH	R18
 	PUSH	R17
+	PUSH	R16
+	LDS	R16, SREG
 	PUSH	R16
 
 	;Check RX data
@@ -224,8 +390,7 @@ DATATRANSFER:
 	BRNE	datatransfer_rx_checksum_loop	;Loop through all data
 
 	LD	R17, X				;Get user checksum
-	CP	R17, R16			;Compare user and calculated checksum
-	BREQ	datatransfer_rx_update		;If equal (checksum OK), update app SFR
+	CPSE	R17, R16			;Compare user and calculated checksum, if equal (checksum OK), update app SFR
 	JMP	datatransfer_rx_send		;Otherwise, ignor this package
 
 	;Update app SFR
@@ -242,7 +407,7 @@ DATATRANSFER:
 	DATATRANSFER_RXMACRO	LR_VALVE
 	DATATRANSFER_RXMACRO	UD_VALVE
 	DATATRANSFER_RXMACRO	LED
-	DATATRANSFER_RXMACRO	GPIO
+	DATATRANSFER_RXMACRO	C_OUT
 	DATATRANSFER_RXMACRO	ENGINE_POWER
 	DATATRANSFER_RXMACRO	PRESSURE_DEST
 	DATATRANSFER_RXMACRO	PRESSURE_DEST+1
@@ -250,6 +415,7 @@ DATATRANSFER:
 	DATATRANSFER_RXMACRO	PITCH_DEST+1
 	DATATRANSFER_RXMACRO	COMPASS_DEST
 	DATATRANSFER_RXMACRO	COMPASS_DEST+1
+	DATATRANSFER_RXMACRO	C_PWM
 
 	;Scan app SFR and send
 	datatransfer_rx_send:
@@ -273,7 +439,7 @@ DATATRANSFER:
 	DATATRANSFER_TXMACRO	LR_VALVE
 	DATATRANSFER_TXMACRO	UD_VALVE
 	DATATRANSFER_TXMACRO	LED
-	DATATRANSFER_TXMACRO	GPIO
+	DATATRANSFER_TXMACRO	C_OUT
 	DATATRANSFER_TXMACRO	ENGINE_POWER
 	DATATRANSFER_TXMACRO	PRESSURE_REAL
 	DATATRANSFER_TXMACRO	PRESSURE_REAL+1
@@ -291,6 +457,7 @@ DATATRANSFER:
 	DATATRANSFER_TXMACRO	TEMPERATURE+1
 	DATATRANSFER_TXMACRO	BAT_VOLTAGE
 	DATATRANSFER_TXMACRO	BAT_VOLTAGE+1
+	DATATRANSFER_TXMACRO	C_PWM
 
 	ST	X, R18				;Last byte: checksum
 	
@@ -298,83 +465,22 @@ DATATRANSFER:
 	STS	UDR0, R16
 	
 	POP	R16
+	STS	SREG, R16
+	POP	R16
 	POP	R17
 	POP	R18
 	POP	R26
 	POP	R27
-	RETI
+	RET
 
+; Scan data from sensors
+SCAN:
 	
-; Receive command byte from controller
-VEC_USART_RXC:
-	PUSH	R27
-	PUSH	R26
-	PUSH	R16
+	RET
 
-	LDS	R27, HIGH(RX_POINTER)		;Get the buffer pointer in RX
-	LDS	R26, LOW(RX_POINTER)
+; Compare seneor data and apply actuator
+APPLY:
+	;PHSH
 
-	LDS	R16, UDR0			;Move data from USART port to the buffer
-	ST	X+, R16
-
-	STS	RX_POINTER+1, R27		;Update pointer
-	STS	RX_POINTER, R26
-
-	POP	R16
-	POP	R26
-	POP	R27
-	RETI
-
-	
-; Send data byte to controller
-VEC_USART_RXC:
-	PUSH	R27
-	PUSH	R26
-	PUSH	R16
-
-	LDS	R27, HIGH(TX_POINTER)		;Get the buffer pointer in TX
-	LDS	R26, LOW(TX_POINTER)
-
-	LD	R16, X+				;Move data from buffer to the UASRT port
-	STS	UDR0, R16
-
-	STS	RX_POINTER+1, R27		;Update pointer
-	STS	RX_POINTER, R26
-
-	POP	R16
-	POP	R26
-	POP	R27
-	RETI
-
-
-; Unused vector ----------------------------------------------
-
-;VEC_RESET:
-VEC_EXT_INT0:
-VEC_EXT_INT1:
-VEC_PCINT0:
-VEC_PCINT1:
-VEC_PCINT2:
-VEC_WDT:
-VEC_TIM2_COMPA:
-VEC_TIM2_COMPB:
-VEC_TIM2_OVF:
-VEC_TIM2_CAPT:
-VEC_TIM1_COMPA:
-VEC_TIM1_COMPB:
-VEC_TIM1_OVF:
-VEC_TIM0_COMPA:
-VEC_TIM0_COMPB:
-VEC_TIM0_OVF:
-VEC_SPI_STC:
-;VEC_USART_RXC:
-VEC_USART_UDRE:
-;VEC_USART_TXC:
-VEC_ADC:
-VEC_EE_RDY:
-VEC_ANA_COMP:
-VEC_TWI:
-VEC_SPM_RDY:
-	JMP	VEC_RESET
-
-; Subroutines ----------------------------------------------
+	;
+	RET
