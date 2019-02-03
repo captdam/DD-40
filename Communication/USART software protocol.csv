@@ -3,7 +3,7 @@
 33,21,,LR_VALVE,RW,Left/right valve,Compass,Pre-Comp,,,HeadLeft,HeadRight,TailLeft,TailRight,TurnLeft=B3|B0|(B3+B0); ShiftLeft=B3+B1
 34,22,,UD_VALVE,RW,Up/down valve,Pitch,Pressure,Pre-Pitch,Pre-Press,HeadUp,HeadDownTailUp,,TailDown,PitchUp=B3|B0|(B3+B0); ShiftUp=(B3+B1)|B3(corrected by g/b force)|B1 (coorected by g/b force)
 35,23,,LED,RW,LED,LightL,LightC,LightR,Navi,,,,,
-36,24,,GPIO,RW,digital pins,D7,D6,D5,D4,D3,D2,B7,B6,
+36,24,,C_OUT,RW,User digital pins output,D7,D6,D5,D4,D3,D2,B7,B6,Custom output pins
 37,25,,,,,,,,,,,,,
 38,26,,,,,,,,,,,,,
 39,27,,,,,,,,,,,,,
@@ -15,7 +15,7 @@
 45,2D,,,,,,,,,,,,,
 46,2E,,,,,,,,,,,,,
 47,2F,,,,,,,,,,,,,
-48,30,,ENGINE_POWER,RW,Pump power PWM,,,,,,,,,"PWM signal Duty=x/255, f=256Hz"
+48,30,,ENGINE_POWER,RW,Pump power PWM,,,,,,,,,PWM signal Duty=x/2a55
 49,31,,PRESSURE_REAL,R,Current pressure (bin),,,,,,,,,
 50,32,,,,,,,,,,,,,
 51,33,,PRESSURE_DEST,RW,Target pressure (bin),,,,,,,,,
@@ -42,14 +42,14 @@
 72,48,,,,,,,,,,,,,
 73,49,,TEMPERATURE,R,Temperature meter (bin),,,,,,,,,
 74,4A,,,,,,,,,,,,,
-75,4B,,BAT_VOLTAGE,R,Battery voltage (bin),,,,,,,,,
-76,4C,,,,,,,,,,,,,
-77,4D,,,,,,,,,,,,,
+75,4B,,BAT_VOLTAGE,R,Battery voltage (bin),,,,,,,,,Last two bits shows signal on the custom input pins
+76,4C,,,,,,,,,,,C1,C0,
+77,4D,,C_PWM,RW,Custom PWM output,,,,,,,,,"Custom PWM on pin B1, PWM signal Duty=x/2a55"
 78,4E,,,,,,,,,,,,,
 79,4F,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,
-,,,,,,,,,,,,,0x20-0x2F,8051 bit-addressable
-,,,,,,,,,,,,,0x30-0x4F,8051 non bit-addressable
+,,,Only ROV --> Controller,,,,,,,,,,0x20-0x2F,8051 bit-addressable
+,,,Both package,,,,,,,,,,0x30-0x4F,8051 non bit-addressable
 ,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,
