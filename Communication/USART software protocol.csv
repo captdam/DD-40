@@ -1,5 +1,5 @@
 #,0xAdd,,Name,R/W,Description,B7,B6,B5,B4,B3,B2,B1,B0,Comments
-32,20,,FB_VALVE,RW,Forward/backward valve,Precise,,,,,X-Forward,Forward,Backward,
+32,20,,FB_VALVE,RW,Forward/backward valve,,,,,,X-Forward,Forward,Backward,X-Forward: full speed forward
 33,21,,LR_VALVE,RW,Left/right valve,Compass,Pre-Comp,,,HeadLeft,HeadRight,TailLeft,TailRight,TurnLeft=B3|B0|(B3+B0); ShiftLeft=B3+B1
 34,22,,UD_VALVE,RW,Up/down valve,Pitch,Pressure,Pre-Pitch,Pre-Press,HeadUp,HeadDownTailUp,,TailDown,PitchUp=B3|B0|(B3+B0); ShiftUp=(B3+B1)|B3(corrected by g/b force)|B1 (coorected by g/b force)
 35,23,,LED,RW,LED,LightL,LightC,LightR,Navi,,,,,
@@ -15,7 +15,7 @@
 45,2D,,,,,,,,,,,,,
 46,2E,,,,,,,,,,,,,
 47,2F,,,,,,,,,,,,,
-48,30,,ENGINE_POWER,RW,Pump power PWM,,,,,,,,,PWM signal Duty=x/2a55
+48,30,,ENGINE_POWER,RW,Pump power PWM,,,,,,,,,PWM signal Duty=x/255
 49,31,,PRESSURE_REAL,R,Current pressure (bin),,,,,,,,,
 50,32,,,,,,,,,,,,,
 51,33,,PRESSURE_DEST,RW,Target pressure (bin),,,,,,,,,
@@ -44,11 +44,11 @@
 74,4A,,,,,,,,,,,,,
 75,4B,,BAT_VOLTAGE,R,Battery voltage (bin),,,,,,,,,Last two bits shows signal on the custom input pins
 76,4C,,,,,,,,,,,C1,C0,
-77,4D,,C_PWM,RW,Custom PWM output,,,,,,,,,"Custom PWM on pin B1, PWM signal Duty=x/2a55"
+77,4D,,C_PWM,RW,Custom PWM output,,,,,,,,,"Custom PWM on pin B1, PWM signal Duty=x/255"
 78,4E,,,,,,,,,,,,,
 79,4F,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,
-,,,Only ROV --> Controller,,,,,,,,,,0x20-0x2F,8051 bit-addressable
+,,,Only ROV --> Controller,,,,,,"Reserved, write 0 always",,,,0x20-0x2F,8051 bit-addressable
 ,,,Both package,,,,,,,,,,0x30-0x4F,8051 non bit-addressable
 ,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,
