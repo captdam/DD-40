@@ -1,0 +1,15 @@
+Bill of Material
+
+STC80C52RC		1	Center MCU
+LCD-1602		2	Data display
+Switches
+	DIP8		1	User custom (C_OUT) data input
+	Tactile		17	Digital input
+	Toggle-OFO	5	Direction control
+	Toggle-OF	7	Function switch
+LCD Monitor		1	Camara monitor
+12V Battery		1	Power supply, larger is better
+Some circuit comp
+	7805		1	Power regulator
+	Diode		30	Prevent ghost key for the matrix keyboard
+Workstation case	1	Any kind of case is fine
