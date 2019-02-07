@@ -1,4 +1,12 @@
-Mid-1st semester:	Design the ROV body (Task 1).
-End-1st semester:	Build the prototype and check the buoyancy (Task 2).
-Mid-2nd semester:	Design the control unit and all the electronic section (Task 3).
-End of year:		Integrate the ROV body and the controller unit and test the ROV in the field (Task 4).
+Semester I
+Feb 1	ROV mechanical structure design.
+Feb 15	ROV actuator design.
+Mar 1	ROV control circuit design (hardware).
+Mar 15	ROV control unit design (software abstraction).
+Mar 29	Operator controller design (operator-side hardware and software abstraction).
+
+Semester II
+May 10	ROV mechanism and actuator implementation.
+Jun 30	ROV-side and operator-side controller software implementation.
+Jul 24	Experiment and testing the ROV in swimming pool.
+Aug 1	Improving and documentation.
