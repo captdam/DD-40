@@ -8,9 +8,11 @@ Jan 25		MOSFET motor driver circuit test.
 End of format template.
 
 Jan 24		First draft design.
+
 Jan 28		AUX controller 0 design.
 Jan 31		AUX controller 0 finished and tested.
 Feb 01		Disscussion about using of sensors and accurator, and controler's I/O desgine with communication protocal.
 Feb 02		Make communication software protocol application speical function register map.
+
 Feb 04		Finalize communication protocol and ROV's pin map.
 
