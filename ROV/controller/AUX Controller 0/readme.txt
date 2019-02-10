@@ -12,3 +12,10 @@ To deal with the problem, there is two method:
   1. The IDEL LED indecator should be connect to the master to ensure the second package is sent after the slave finishing process the first package.
   2. The master should not send package to often. The slave takes 1167 cycles to process the package (that means, 1 ms).
 Since most actuator is a logic device (only accept 1 or 0, not PWM or analog), this AUX controller will takes charge of them. IO on the master will be reserved for devices that requirs PWM signal.
+
+About the tester:
+The tester has a listener on the USART port of the master. When the master receive a word (8-bit), the master will:
+  1. Select the slave.
+  2. Send the word to the slave 3 times.
+  3. Unselect the slave.
+If everything is going right, the word should be shown on slave's P2, P1 and P0.
