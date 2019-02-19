@@ -38,34 +38,15 @@
 ; eg: If XX(0x48, 2-byte) = 0x1234
 ;     then, @0x49 = 0x34, @0x48 = 0x12
 .DSEG
-.ORG	0x0100
-	.EQU	RX_BUFFER_SIZE	=	0x80 - 2
-	RX_BUFFER:	.BYTE	RX_BUFFER_SIZE
-	RX_POINTER:	.BYTE	2		;Pointer, points to the next valve
-	.EQU	RX_PACKAGE_SIZE	=	13
-	;	FB_VALVE	LR_VALVE	UD_VALVE	LED		C_OUT
-	;	ENGINE_POWER	PRESSURE_DEST_L	PRESSURE_DEST_H	PITCH_DEST_L	PITCH_DEST_H
-	;	COMPASS_DEST_L	COMPASS_DEST_H	C_PWM
 
-.ORG	0x0180
-	.EQU	TX_BUFFER_SIZE	=	0x80 - 2
-	TX_BUFFER:	.BYTE	TX_BUFFER_SIZE
-	TX_POINTER:	.BYTE	2
-	.EQU	TX_PACKAGE_SIZE	=	23
-	;	FB_VALVE	LR_VALVE	UD_VALVE	LED		C_OUT
-	;	ENGINE_POWER	PRESSURE_REAL_L	PRESSURE_REAL_H PRESSURE_DEST_L	PRESSURE_DEST_H
-	;	PITCH_REAL_L	PITCH_REAL_H	PITCH_DEST_L	PITCH_DEST_H	COMPASS_REAL_L
-	;	COMPASS_REAL_H	COMPASS_DEST_L	COMPASS_DEST_H	TEMPERATURE_L	TEMPERATURE_H
-	;	BAT_VLOTAGE_L	BAT_VLOTAGE_H	C_PWM
-
-.ORG	0x0200					;App SFR tables (0x0100 - 0x017F), see register table
-	.org 0x0220
+.ORG	0x0100					;App SFR tables (0x0100 - 0x017F), see image in /Communication for description
+	.org 0x0120
 	FB_VALVE:	.BYTE	1
 	LR_VALVE:	.BYTE	1
 	UD_VALVE:	.BYTE	1
 	LED:		.BYTE	1
 	C_OUT:		.BYTE	1
-	.org 0x0230
+	.org 0x0130
 	ENGINE_POWER:	.BYTE	1
 	PRESSURE_REAL:	.BYTE	2
 	PRESSURE_DEST:	.BYTE	2
@@ -83,16 +64,28 @@
 	BAT_VOLTAGE:	.BYTE	2
 	C_PWM:		.BYTE	1
 
-.ORG	0x0280
+.ORG	0x0180					;Static intermedia variables
 	PHASE:		.BYTE	1
+
+.ORG	0x0200					;Tx/Rx buffer
+	.org 0x0200
+	.EQU	RX_BUFFER_SIZE	=	0x80 - 2
+	RX_BUFFER:	.BYTE	RX_BUFFER_SIZE
+	RX_POINTER:	.BYTE	2		;Pointer, points to the next valve
+	.EQU	RX_PACKAGE_SIZE	=	12	;See the image in /Communication for package structure
+	.org 0x0280				;The buffer size is way larger than it needs, in case of buffer overflow
+	.EQU	TX_BUFFER_SIZE	=	0x80 - 2
+	TX_BUFFER:	.BYTE	TX_BUFFER_SIZE
+	TX_POINTER:	.BYTE	2
+	.EQU	TX_PACKAGE_SIZE	=	10
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;                   CODE  SEG                   ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.CSEG
 
 ; Interrupt vector
-.CSEG
-.ORG	0x0000	JMP	VEC_RESET		;Not used due to bootloader
+.ORG	0x0000	JMP	VEC_RESET
 .ORG	0x0002	JMP	VEC_EXT_INT0
 .ORG	0x0004	JMP	VEC_EXT_INT1
 .ORG	0x0006	JMP	VEC_PCINT0
@@ -229,10 +222,7 @@ INI:
 
 ; Cycle. Compare VALUE_DEST with VALUE_REAL to autopilot the ROV
 MAIN:	
-	;
-
-
-
+	
 	JMP	MAIN
 
 VEC_TIM2_OVF:
@@ -382,31 +372,37 @@ DATATRANSFER:
 	STS	RX_POINTER, R26
 
 	LDI	R18, RX_PACKAGE_SIZE		;Get package length in R18
-	CLR	R16				;Calculate checksum
+	CLR	R16				;Prepare to calculate checksum
 	datatransfer_rx_checksum_loop:
 	LD	R17, X+
 	ADD	R16, R17
 	DEC	R18
 	BRNE	datatransfer_rx_checksum_loop	;Loop through all data
 
-	LD	R17, X				;Get user checksum
-	CPSE	R17, R16			;Compare user and calculated checksum, if equal (checksum OK), update app SFR
-	JMP	datatransfer_rx_send		;Otherwise, ignor this package
+	LD	R17, X				;Checksum from operator
+	CPSE	R17, R16			;Compare operator's chacksum and calculated checksum, if equal (checksum OK), update app SFR
+	JMP	datatransfer_send		;Otherwise, ignor this package
 
 	;Update app SFR
 	datatransfer_rx_update:
 	LDI	R27, HIGH(RX_BUFFER)		;Get address of the beginning of the buffer in RX
 	LDI	R26, LOW(RX_BUFFER)
-
+	
+	LD	R16, X				;The first word is mixed of FB_VALVE and LED SFR
+	ANDI	R16, 0x0F
+	STS	FB_VALVE, R16
+	
+	LD	R16, X+
+	ANDI	R16, 0xF0
+	STS	LED, R16
+	
 	.MACRO	DATATRANSFER_RXMACRO		;Move data from buffer to app's SFR
 	LD	R16, X+
 	STS	@0, R16
 	.ENDMACRO
-
-	DATATRANSFER_RXMACRO	FB_VALVE
+	
 	DATATRANSFER_RXMACRO	LR_VALVE
 	DATATRANSFER_RXMACRO	UD_VALVE
-	DATATRANSFER_RXMACRO	LED
 	DATATRANSFER_RXMACRO	C_OUT
 	DATATRANSFER_RXMACRO	ENGINE_POWER
 	DATATRANSFER_RXMACRO	PRESSURE_DEST
@@ -416,9 +412,10 @@ DATATRANSFER:
 	DATATRANSFER_RXMACRO	COMPASS_DEST
 	DATATRANSFER_RXMACRO	COMPASS_DEST+1
 	DATATRANSFER_RXMACRO	C_PWM
-
+	
+	
 	;Scan app SFR and send
-	datatransfer_rx_send:
+	datatransfer_send:
 	LDI	R27, HIGH(TX_BUFFER)		;Get address of the beginning of the buffer in RX
 	LDI	R26, LOW(TX_BUFFER)
 	STS	TX_POINTER+1, R27		;Reset pointer's value to the beginning of the buffer
@@ -435,33 +432,20 @@ DATATRANSFER:
 	ST	X+, R16
 	.ENDMACRO
 	
-	DATATRANSFER_TXMACRO	FB_VALVE
-	DATATRANSFER_TXMACRO	LR_VALVE
-	DATATRANSFER_TXMACRO	UD_VALVE
-	DATATRANSFER_TXMACRO	LED
-	DATATRANSFER_TXMACRO	C_OUT
-	DATATRANSFER_TXMACRO	ENGINE_POWER
 	DATATRANSFER_TXMACRO	PRESSURE_REAL
 	DATATRANSFER_TXMACRO	PRESSURE_REAL+1
-	DATATRANSFER_TXMACRO	PRESSURE_DEST
-	DATATRANSFER_TXMACRO	PRESSURE_DEST+1
 	DATATRANSFER_TXMACRO	PITCH_REAL
 	DATATRANSFER_TXMACRO	PITCH_REAL+1
-	DATATRANSFER_TXMACRO	PITCH_DEST
-	DATATRANSFER_TXMACRO	PITCH_DEST+1
 	DATATRANSFER_TXMACRO	COMPASS_REAL
 	DATATRANSFER_TXMACRO	COMPASS_REAL+1
-	DATATRANSFER_TXMACRO	COMPASS_DEST
-	DATATRANSFER_TXMACRO	COMPASS_DEST+1
 	DATATRANSFER_TXMACRO	TEMPERATURE
 	DATATRANSFER_TXMACRO	TEMPERATURE+1
 	DATATRANSFER_TXMACRO	BAT_VOLTAGE
 	DATATRANSFER_TXMACRO	BAT_VOLTAGE+1
-	DATATRANSFER_TXMACRO	C_PWM
 
 	ST	X, R18				;Last byte: checksum
 	
-	LDI	R16, 0x00			;Send syn byte, and begin to send package
+	LDI	R16, 0xFF			;Send synch signal, and begin to send package
 	STS	UDR0, R16
 	
 	POP	R16
@@ -487,8 +471,8 @@ APPLY:
 
 ; Lookup table
 BAT_VOLTAGE_TABLE:
-	; ADC read (1/3 scale, 15V max real, 5V max read)
-	; 0V = 0x0000, 5V = 0xFFF0; 0x0000 = 0.0V, 0x0010 = 0.1V, 0x0020 = 0.2V, 0x0030 = 0.4V, 0x0010 = 1.2V...
+	; ADC read (1/3 scale, 15V max real, 5V max read, 7-bit resulution)
+	; ADC-0x00 = 0.0V, ADC-0x02 = 0.1V, ADC-0x04 = 0.2V, ADC-0x06 = 0.4V, 0xFE = 15V
 	; Data output to operator (BCD10 + BCD1 + BCD0.1 + 0)
 	DW	0x0000, 0x0010, 0x0020, 0x0040, 0x0050, 0x0060, 0x0070, 0x0080,
 		0x0090, 0x0110, 0x0120, 0x0130, 0x0140, 0x0150, 0x0170, 0x0180,
@@ -506,3 +490,5 @@ BAT_VOLTAGE_TABLE:
 		0x1230, 0x1240, 0x1250, 0x1260, 0x1280, 0x1290, 0x1300, 0x1310,
 		0x1320, 0x1330, 0x1350, 0x1360, 0x1370, 0x1380, 0x1390, 0x1410,
 		0x1420, 0x1430, 0x1440, 0x1450, 0x1460, 0x1480, 0x1490, 0x1500
+PRESSURE_TABLE:
+	
