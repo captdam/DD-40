@@ -21,4 +21,4 @@ Feb 12		Make battery voltage binary to BCD lookup table.
 
 Feb 19		Study and test the LCD display.
 Feb 20		Write asm lib for LCD display.
-
+Feb 20		Operator console design (mech).
