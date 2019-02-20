@@ -20,5 +20,6 @@ Feb 08		Finalize the Letter of Intent.
 Feb 12		Make battery voltage binary to BCD lookup table.
 
 Feb 19		Study and test the LCD display.
+Feb 19		Re-design the communication protocol (less data, simpler synch algorithm <-- which is better)
 Feb 20		Write asm lib for LCD display.
 Feb 20		Operator console design (mech).
