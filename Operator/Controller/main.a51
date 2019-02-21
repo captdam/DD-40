@@ -1,9 +1,9 @@
 ; Operator console
 
 ; CONFIG FILES -----------------------------------
-$INCLUDE	(sfr.a51)
-$INCLUDE	(cfg.a51)
-$INCLUDE	(ram.a51)
+$INCLUDE	(c_sfr.a51)
+$INCLUDE	(c_cfg.a51)
+$INCLUDE	(c_ram.a51)
 	
 	
 ; INTERRUPT VECTOR MAP -----------------------------------
@@ -25,8 +25,8 @@ ORG	0x002B
 
 ; EXTERNAL FUNCTIONS -----------------------------------
 
-$INCLUDE	(macro_delay.a51)
-$INCLUDE	(func_lcd.a51)
+$INCLUDE	(f_delay.a51)
+$INCLUDE	(f_lcd.a51)
 
 ; INTERNAL FUNCTIONS -----------------------------------
 
@@ -47,19 +47,7 @@ INI:							;Boot setup
 	USING	0					;USING REGISTER BANK 0 ALWAYS!!!
 	MOV	SP, #0x7F
 	
-	__M_LCD_INI #0x38				;8-bit interface, 2-line, 5*8 font
-	__M_WAIT5000
-	__M_LCD_INI #0x38
-	__M_WAIT100
-	__M_LCD_INI #0x08				;Cursor display off
-	__M_WAIT100
-	__M_LCD_INI #0x01				;Clear display
-	__M_WAIT5000
-	__M_LCD_INI #0x06				;Cursor auto-inc (left-to-right write)
-	__M_WAIT100
-	__M_LCD_INI #0x0C				;Turn on display
-	__M_WAIT100
-	
+	__M_LCD_PREPARE
 	
 	MOV	SCON, #0x50				;UART mode1 (8-bit, flex baud), enable read
 	SETB	ES
@@ -68,23 +56,11 @@ INI:							;Boot setup
 	SETB	TR1					;Enable timer1
 	
 	SETB	EA
-
-
-MAIN:
-	SETB	LED_IDEL
 	
-	__M_LCD0_SETCURSOR	0,0
-	__M_LCD0_SETDATA	#'O'
-	__M_LCD0_SETDATA	#'K'
+MAIN:							;Main cycle: execute while receive synch signal
+	CLR	LED_IDEL
 	
-	__M_LCD0_SETCURSOR	1,5
-	__M_LCD0_SETDATA	#'H'
-	__M_LCD0_SETDATA	#'I'
-	__M_LCD0_SETDATA	#'!'
-	
-	JMP	$
-	
-SCAN:
+SCAN:							;Scan keyboard
 	MOV	KEY_SCAN, #0xFF
 	
 	MOV	KEY_DRIVE, #0x7F			;Scan row 7: LightL - LightC - LightR - Navi - X - XForward - Forward - Backward
@@ -205,7 +181,139 @@ SCAN:
 	CALL	DIGITAL_INPUT
 	scan_2_end:
 	
-COMMAND_UI:
+COMMAND_UI:						;Update command data to LCD0
+
+	;Test
+	MOV	C_PWM, #0x29				;C_PWM = 100%
+	MOV	PITCH_DEST, #0x29			;PITCH_DEST = 296 (64 down)
+	MOV	PITCH_DEST+1, #0x60
+	MOV	COMPASS_DEST, #0x13			;COMPASS_DEST = 135
+	MOV	COMPASS_DEST+1, #0x50
+	MOV	PRESSURE_DEST, #0x24			;PRESSURE_DEST = 24.55m
+	MOV	PRESSURE_DEST+1, #0x55
+	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
+	MOV	DIGI_BUFFER_H, #0x02
+	MOV	DIGI_BUFFER_L, #0x03
+	;End of test
+
+
+	__M_LCD0_SETCURSOR	0,0
+	
+	MOV	A, PITCH_DEST				;PITCH_DEST 100
+	ANL	A, #0xF0
+	SWAP	A
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, PITCH_DEST				;PITCH_DEST 10
+	ANL	A, #0x0F
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, PITCH_DEST+1				;PITCH_DEST 1
+	ANL	A, #0xF0
+	SWAP	A
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	__M_LCD0_SETDATA	#'P'			;PITCH_DEST P
+	__M_LCD0_SETDATA	#' '			;Space
+	
+	MOV	A, COMPASS_DEST				;COMPASS_DEST 100
+	ANL	A, #0xF0
+	SWAP	A
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, COMPASS_DEST				;COMPASS_DEST 10
+	ANL	A, #0x0F
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, COMPASS_DEST+1			;COMPASS_DEST 1
+	ANL	A, #0xF0
+	SWAP	A
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	__M_LCD0_SETDATA	#'N'			;PITCH_DEST P
+	__M_LCD0_SETDATA	#' '
+	
+	MOV	A, PRESSURE_DEST			;COMPASS_DEST 10
+	ANL	A, #0xF0
+	SWAP	A
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, PRESSURE_DEST			;COMPASS_DEST 1
+	ANL	A, #0x0F
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	__M_LCD0_SETDATA	#'.'			;PITCH_DEST P
+	
+	MOV	A, PRESSURE_DEST+1			;COMPASS_DEST 0.1
+	ANL	A, #0xF0
+	SWAP	A
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, PRESSURE_DEST+1			;COMPASS_DEST 0.01
+	ANL	A, #0x0F
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	__M_LCD0_SETDATA	#'m'			;PITCH_DEST P
+	
+	__M_LCD0_SETCURSOR	1,0
+	
+	MOV	A, C_PWM				;C_PWM = 100? 0xA0 (BCD100)
+	CJNE	A, #0xA0, command_ui_pwm
+	__M_LCD0_SETDATA	#'1'
+	__M_LCD0_SETDATA	#'0'
+	__M_LCD0_SETDATA	#'0'
+	JMP	command_ui_pwm_end
+	
+	command_ui_pwm:
+	__M_LCD0_SETDATA	#'0'			;C_PWM 100
+	
+	MOV	A, C_PWM				;C_PWM 10 (Notice: reload C_PWM because A has been overwrite by __M_LCD0_SETDAT)
+	ANL	A, #0xF0
+	SWAP	A
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, C_PWM				;C_PWM 1
+	ANL	A, #0x0F
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	command_ui_pwm_end:
+	
+	__M_LCD0_SETDATA	#'%'			;C_PWM %PWM
+	__M_LCD0_SETDATA	#'P'
+	__M_LCD0_SETDATA	#'W'
+	__M_LCD0_SETDATA	#'M'
+	
+	__M_LCD0_SETCURSOR	1,12			;Digital input ->
+	__M_LCD0_SETDATA	#0x7E
+	
+	MOV	A, DIGI_BUFFER_E			;Digital input EXH (100)
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, DIGI_BUFFER_H			;Digital input High (10)
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	MOV	A, DIGI_BUFFER_L			;Digital input Low (1)
+	ADD	A, #0x30
+	CALL	LCD0_SETDATA
+	
+	
+	
+	
+	
+	
 	
 
 CHECKSUM:
@@ -235,11 +343,12 @@ CHECKSUM:
 
 DATAUI:
 	
-
+JMP	$
 
 	
 	
-CYCLE_END:	
+CYCLE_END:
+	SETB	LED_IDEL
 	JMP	MAIN
 	
 	
