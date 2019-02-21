@@ -10,6 +10,21 @@ __M_LCD_INI		MACRO	CMD			;Write instruction to both LCDs
 		CLR	LCD_E1
 	ENDM
 
+__M_LCD_PREPARE		MACRO
+	__M_LCD_INI #0x38				;8-bit interface, 2-line, 5*8 font
+	__M_WAIT5000
+	__M_LCD_INI #0x38
+	__M_WAIT100
+	__M_LCD_INI #0x08				;Cursor display off
+	__M_WAIT100
+	__M_LCD_INI #0x01				;Clear display
+	__M_WAIT5000
+	__M_LCD_INI #0x06				;Cursor auto-inc (left-to-right write)
+	__M_WAIT100
+	__M_LCD_INI #0x0C				;Turn on display
+	__M_WAIT100
+	ENDM
+
 __M_LCD0_SETCURSOR	MACRO	LINE,INDEX		;Set coursor of LCD0
 	MOV	A, #(LINE*0x40+INDEX)
 	CALL	LCD0_SETCURSOR
