@@ -36,24 +36,80 @@ DIGITAL_INPUT:						;User enter a digital to AutoPilot console
 	MOV	DIGI_BUFFER_L, A
 	RET
 
-DIGITAL_APPLY:						;User apply a value to AutoPilot console
+DIGITAL_APPLY_PITCH:					;User apply value from gitital input buffer to AutoPilot pitch control
 	
+	RET
+
+DIGITAL_APPLY_COMPASS:					;User apply value from gitital input buffer to AutoPilot compass control
+	
+	RET
+
+DIGITAL_APPLY_PRESSURE:					;User apply value from gitital input buffer to AutoPilot pressure (depth) control
+	
+	RET
+
+DIGITAL_APPLY_PWM:					;User apply value from gitital input buffer to custom PWM output control
+	MOV	A, DIGI_BUFFER_E
+	JZ	digital_apply_pwm_read			;If buffer_EXH has value (100 is not 0), set PWM to 100
+	MOV	C_PWM, #0xA0
+	RET
+	digital_apply_pwm_read:
+	MOV	A, DIGI_BUFFER_H			;Get 10s to higher nibble
+	SWAP	A
+	ADD	A, DIGI_BUFFER_L			;Add 1s to lower nibble
+	MOV	C_PWM, A
 	RET
 	
 
 ; MAIN CODE --------------------------------------------
 
 INI:							;Boot setup
-	USING	0					;USING REGISTER BANK 0 ALWAYS!!!
 	MOV	SP, #0x7F
 	
-	__M_LCD_PREPARE
+	__M_LCD_PREPARE					;LCD ini
+	
+	MOV	A, #'P'					;LCD constant display character
+	__M_LCD_WRITEBUFFER	0,0,3
+	MOV	A, #' '
+	__M_LCD_APPENDBUFFER				;LCD0:	0123456789ABCDEF
+	MOV	A, #'N'					;	xxxP xxxN xx.xxm
+	__M_LCD_WRITEBUFFER	0,0,8			;	PWMxxx%     >xxx
+	MOV	A, #' '
+	__M_LCD_APPENDBUFFER
+	MOV	A, #'.'
+	__M_LCD_WRITEBUFFER	0,0,12
+	MOV	A, #'m'
+	__M_LCD_WRITEBUFFER	0,0,15
+	
+	MOV	A, #'P'
+	__M_LCD_WRITEBUFFER	0,1,0
+	MOV	A, #'W'
+	__M_LCD_APPENDBUFFER
+	MOV	A, #'M'
+	__M_LCD_APPENDBUFFER
+	MOV	A, #'%'
+	__M_LCD_WRITEBUFFER	0,1,6
+	MOV	A, #' '
+	__M_LCD_APPENDBUFFER
+	__M_LCD_APPENDBUFFER
+	__M_LCD_APPENDBUFFER
+	__M_LCD_APPENDBUFFER
+	__M_LCD_APPENDBUFFER
+	MOV	A, #0x7E
+	__M_LCD_WRITEBUFFER	0,1,12
 	
 	MOV	SCON, #0x50				;UART mode1 (8-bit, flex baud), enable read
 	SETB	ES
+	
 	MOV	TH1, #UART_RELOAD			;Set timer1 auto-reload value - timer1 is for UART
-	MOV	TMOD, #0x20				;Set Timer1 mode to auto-reload
-	SETB	TR1					;Enable timer1
+	MOV	TMOD, #0x21				;Set Timer1 mode to auto-reload, timer0 mode to 16-bit timer
+	SETB	TR1					;Enable timer1 and timer0, enable timer0 interrupt
+	SETB	TR0
+	SETB	ET0
+	
+	MOV	TX_BUFFER_P, #LOW TX_BUFFER_BEGIN	;Reset Tx/Rx buffer pointer (flush buffers)
+	MOV	RX_BUFFER_P, #LOW RX_BUFFER_BEGIN
+	MOV	LCD_BUFFER_P, #LCD_BUFFER		;Reset LCD buffer pointer
 	
 	SETB	EA
 	
@@ -108,23 +164,19 @@ SCAN:							;Scan keyboard
 	NOP
 	scan_3_pitch:
 	JB	KEY_SCAN.7, scan_3_compass
-	MOV	A, #PITCH_DEST
-	CALL	DIGITAL_APPLY
+	CALL	DIGITAL_APPLY_PITCH
 	JMP	scan_2_end
 	scan_3_compass:
 	JB	KEY_SCAN.6, scan_3_pressure
-	MOV	A, #COMPASS_DEST
-	CALL	DIGITAL_APPLY
+	CALL	DIGITAL_APPLY_COMPASS
 	JMP	scan_2_end
 	scan_3_pressure:
 	JB	KEY_SCAN.5, scan_3_cpwm
-	MOV	A, #PRESSURE_DEST
-	CALL	DIGITAL_APPLY
+	CALL	DIGITAL_APPLY_PRESSURE
 	JMP	scan_2_end
 	scan_3_cpwm:
 	JB	KEY_SCAN.4, scan_3_9
-	MOV	A, #C_PWM
-	CALL	DIGITAL_APPLY
+	CALL	DIGITAL_APPLY_PWM
 	JMP	scan_2_end
 	scan_3_9:
 	JB	KEY_SCAN.1, scan_3_8
@@ -181,145 +233,96 @@ SCAN:							;Scan keyboard
 	CALL	DIGITAL_INPUT
 	scan_2_end:
 	
-COMMAND_UI:						;Update command data to LCD0
-
-	;Test
-	MOV	C_PWM, #0x29				;C_PWM = 100%
-	MOV	PITCH_DEST, #0x29			;PITCH_DEST = 296 (64 down)
-	MOV	PITCH_DEST+1, #0x60
-	MOV	COMPASS_DEST, #0x13			;COMPASS_DEST = 135
-	MOV	COMPASS_DEST+1, #0x50
-	MOV	PRESSURE_DEST, #0x24			;PRESSURE_DEST = 24.55m
-	MOV	PRESSURE_DEST+1, #0x55
-	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
-	MOV	DIGI_BUFFER_H, #0x02
-	MOV	DIGI_BUFFER_L, #0x03
-	;End of test
-
-
-	__M_LCD0_SETCURSOR	0,0
+	MOV	KEY_DRIVE, #0xFF			;Keyboard scan end
+	
+COMMAND_UI:						;Update command data to LCD0 buffer
+;	;Test
+;	MOV	C_PWM, #0x29				;C_PWM = 100%
+;	MOV	PITCH_DEST, #0x29			;PITCH_DEST = 296 (64 down)
+;	MOV	PITCH_DEST+1, #0x60
+;	MOV	COMPASS_DEST, #0x13			;COMPASS_DEST = 135
+;	MOV	COMPASS_DEST+1, #0x50
+;	MOV	PRESSURE_DEST, #0x24			;PRESSURE_DEST = 24.55m
+;	MOV	PRESSURE_DEST+1, #0x55
+;	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
+;	MOV	DIGI_BUFFER_H, #0x02
+;	MOV	DIGI_BUFFER_L, #0x03
+;	;End of test
 	
 	MOV	A, PITCH_DEST				;PITCH_DEST 100
-	ANL	A, #0xF0
-	SWAP	A
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
+	__M_HIGH2ASCII
+	__M_LCD_WRITEBUFFER	0,0,0
 	MOV	A, PITCH_DEST				;PITCH_DEST 10
-	ANL	A, #0x0F
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
+	__M_LOW2ASCII
+	__M_LCD_APPENDBUFFER
 	MOV	A, PITCH_DEST+1				;PITCH_DEST 1
-	ANL	A, #0xF0
-	SWAP	A
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
-	__M_LCD0_SETDATA	#'P'			;PITCH_DEST P
-	__M_LCD0_SETDATA	#' '			;Space
+	__M_HIGH2ASCII
+	__M_LCD_APPENDBUFFER
 	
 	MOV	A, COMPASS_DEST				;COMPASS_DEST 100
-	ANL	A, #0xF0
-	SWAP	A
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
+	__M_HIGH2ASCII
+	__M_LCD_WRITEBUFFER	0,0,5
 	MOV	A, COMPASS_DEST				;COMPASS_DEST 10
-	ANL	A, #0x0F
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
+	__M_LOW2ASCII
+	__M_LCD_APPENDBUFFER
 	MOV	A, COMPASS_DEST+1			;COMPASS_DEST 1
-	ANL	A, #0xF0
-	SWAP	A
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
+	__M_HIGH2ASCII
+	__M_LCD_APPENDBUFFER
 	
-	__M_LCD0_SETDATA	#'N'			;PITCH_DEST P
-	__M_LCD0_SETDATA	#' '
-	
-	MOV	A, PRESSURE_DEST			;COMPASS_DEST 10
-	ANL	A, #0xF0
-	SWAP	A
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
-	MOV	A, PRESSURE_DEST			;COMPASS_DEST 1
-	ANL	A, #0x0F
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
-	__M_LCD0_SETDATA	#'.'			;PITCH_DEST P
-	
-	MOV	A, PRESSURE_DEST+1			;COMPASS_DEST 0.1
-	ANL	A, #0xF0
-	SWAP	A
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
-	MOV	A, PRESSURE_DEST+1			;COMPASS_DEST 0.01
-	ANL	A, #0x0F
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
-	__M_LCD0_SETDATA	#'m'			;PITCH_DEST P
-	
-	__M_LCD0_SETCURSOR	1,0
+	MOV	A, PRESSURE_DEST			;PRESSURE_DEST 10
+	__M_HIGH2ASCII
+	__M_LCD_WRITEBUFFER	0,0,10
+	MOV	A, PRESSURE_DEST			;PRESSURE_DEST 1
+	__M_LOW2ASCII
+	__M_LCD_APPENDBUFFER
+	MOV	A, PRESSURE_DEST+1			;PRESSURE_DEST 0.1
+	__M_HIGH2ASCII
+	__M_LCD_WRITEBUFFER	0,0,13
+	MOV	A, PRESSURE_DEST+1			;PRESSURE_DEST 0.01
+	__M_LOW2ASCII
+	__M_LCD_APPENDBUFFER
 	
 	MOV	A, C_PWM				;C_PWM = 100? 0xA0 (BCD100)
 	CJNE	A, #0xA0, command_ui_pwm
-	__M_LCD0_SETDATA	#'1'
-	__M_LCD0_SETDATA	#'0'
-	__M_LCD0_SETDATA	#'0'
-	JMP	command_ui_pwm_end
+	MOV	A, #'1'					;C_PWM = 100
+	__M_LCD_WRITEBUFFER	0,1,3
+	MOV	A, #'0'
+	__M_LCD_APPENDBUFFER
+	__M_LCD_APPENDBUFFER
 	
 	command_ui_pwm:
-	__M_LCD0_SETDATA	#'0'			;C_PWM 100
-	
-	MOV	A, C_PWM				;C_PWM 10 (Notice: reload C_PWM because A has been overwrite by __M_LCD0_SETDAT)
-	ANL	A, #0xF0
-	SWAP	A
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
+	MOV	A, #'0'					;C_PWM 100
+	__M_LCD_WRITEBUFFER	0,1,3
+	MOV	A, C_PWM				;C_PWM 10
+	__M_HIGH2ASCII
+	__M_LCD_APPENDBUFFER
 	MOV	A, C_PWM				;C_PWM 1
-	ANL	A, #0x0F
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
+	__M_LOW2ASCII
+	__M_LCD_APPENDBUFFER
 	command_ui_pwm_end:
 	
-	__M_LCD0_SETDATA	#'%'			;C_PWM %PWM
-	__M_LCD0_SETDATA	#'P'
-	__M_LCD0_SETDATA	#'W'
-	__M_LCD0_SETDATA	#'M'
-	
-	__M_LCD0_SETCURSOR	1,12			;Digital input ->
-	__M_LCD0_SETDATA	#0x7E
-	
 	MOV	A, DIGI_BUFFER_E			;Digital input EXH (100)
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
+	__M_LOW2ASCII
+	__M_LCD_WRITEBUFFER	0,1,13
 	MOV	A, DIGI_BUFFER_H			;Digital input High (10)
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
-	
+	__M_LOW2ASCII
+	__M_LCD_APPENDBUFFER
 	MOV	A, DIGI_BUFFER_L			;Digital input Low (1)
-	ADD	A, #0x30
-	CALL	LCD0_SETDATA
+	__M_LOW2ASCII
+	__M_LCD_APPENDBUFFER
 	
 	
 	
 	
 	
 	
-	
-
-CHECKSUM:
-	JNB	F0, $					;Wait for package fully received
-	CLR	F0
+WAITPACKAGE:
+	SETB	LED_IDEL
+	MOV	A, RX_BUFFER_P
+	CJNE	A, #RX_BUFFER_END, $			;Wait until package fully received
 	CLR	LED_IDEL
+	
+CHECKSUM:
 	
 	CLR	A					;Clear A, R2, prepare to calculate checksum
 	MOV	R2, A
@@ -342,8 +345,6 @@ CHECKSUM:
 	CLR	LED_COMERROR
 
 DATAUI:
-	
-JMP	$
 
 	
 	
@@ -358,57 +359,116 @@ CYCLE_END:
 INT_0:
 	RETI
 
-TIMER_0:
+TIMER_0:						;Update LCD
 	CLR	TF0
+	
+	PUSH	ACC
+	PUSH	PSW
+	PUSH	DPH
+	PUSH	DPL
+	
+	MOV	TH0, #0xFE				;Sample from ROV every 25000us, LCD sample from sample every 12500us
+	MOV	TL0, #0xD4				;16*2 LCD = 32chars, using 40 --> Update LCD every 300us (-300 = 0xFED4)
+	
+	MOV	A, LCD_BUFFER_P				;Check line end
+	
+	timer_0_checkline0end:
+	CJNE	A, #LOW LCD0_LINE0+LCD_LINELENGTH, timer_0_checkline1end	;Pointer points to 0x10 (line0 end)
+	MOV	LCD_BUFFER_P, #LOW LCD0_LINE1		;Pointer --> next line
+	MOV	A, #0x40				;LCD command: go to line1
+	CALL	LCD0_SETCURSOR
+	CALL	LCD1_SETCURSOR
+	JMP	TIMER_0_end
+	
+	timer_0_checkline1end:
+	CJNE	A, #LOW	LCD0_LINE1+LCD_LINELENGTH, timer_0_sendchar	;Pointer points to 0x10 (line1 end)
+	MOV	LCD_BUFFER_P, #LOW LCD0_LINE0		;Pointer --> next line (go back to line0)
+	MOV	A, #0x00				;LCD command: go to line0
+	CALL	LCD0_SETCURSOR
+	CALL	LCD1_SETCURSOR
+	JMP	TIMER_0_end
+	
+	timer_0_sendchar:
+	MOV	DPH, #HIGH LCD0_LINE0			;Get pointer to LCD0 data
+	MOV	DPL, LCD_BUFFER_P
+	INC	LCD_BUFFER_P				;Pointer+
+	MOVX	A, @DPTR				;Send data of LCD0 and send
+	CALL	LCD0_SETDATA
+	MOV	A, DPL					;Get pointer to LCD1 data
+	ADD	A, #LCD1_LINE0-LCD0_LINE0
+	MOV	DPL, A
+	MOVX	A, @DPTR				;Send data of LCD1 and send
+	CALL	LCD1_SETDATA
+	
+	TIMER_0_end:
+	POP	DPL
+	POP	DPH
+	POP	PSW
+	POP	ACC
 	RETI
 
 INT_1:
 	RETI
 
-TIMER_1:
+TIMER_1:						;DO NOT USE! UART USED.
 	CLR	TF1
 	RETI
 
 UART:							;Tx/Rx interrupt, R0 = Tx pointer, R1 = Rx pointer
 	PUSH	ACC
 	PUSH	PSW
+	PUSH	DPH
+	PUSH	DPL
+	
 	JBC	RI, UART_rxc				;Check interrupt reason
-	CLR	TI
+	JBC	TI, UART_txc
+	JMP	UART_end
 	
 UART_txc:
-	CJNE	R0, #TX_BUFFER_END, uart_txc_send	;Is package fully send?
+	MOV	A, TX_BUFFER_P
+	CJNE	A, #TX_BUFFER_END, uart_txc_send	;Is package fully send?
 	JMP	UART_end
 	
 	uart_txc_send:
-	MOVX	A, @R0					;Get data from buffer and send to UART
+	MOV	DPH, #HIGH TX_BUFFER_BEGIN		;Get data from buffer and send to UART
+	MOV	DPL, TX_BUFFER_P
+	MOVX	A, @DPTR
 	MOV	SBUF, A
-	INC	R0					;Pointer inc
+	INC	TX_BUFFER_P				;Pointer inc
 	JMP	UART_end
 	
 UART_rxc:
 	MOV	A, SBUF					;Get data from UART
+	CJNE	A, #0xFF, uart_rxc_data			;Synch signal?
 	
 	uart_rxc_sync:
+	USING	0
+	CLR	RS1
+	CLR	RS0
+	PUSH	AR0
+	
 	MOV	A, SP					;Write return PC to MAIN
-	SUBB	A, #3					;Stack = -PSW, ACC, PC_H, PC_L
+	SUBB	A, #6					;Stack = >(H)R0, DPL, DPH, PSW, ACC, PC_H, PC_L(L)
 	MOV	R0, A
-	MOV	@R0, #LOW(MAIN)
+	MOV	@R0, #LOW MAIN
 	INC	R0
-	MOV	@R0, #HIGH(MAIN)
+	MOV	@R0, #HIGH MAIN
 	
-	MOV	R0, #TX_BUFFER_BEGIN			;Reset Tx/Rx buffer pointer (flush buffers)
-	MOV	R1, #RX_BUFFER_BEGIN
+	MOV	TX_BUFFER_P, #LOW TX_BUFFER_BEGIN	;Reset Tx/Rx buffer pointer (flush buffers)
+	MOV	RX_BUFFER_P, #LOW RX_BUFFER_BEGIN
 	
+	POP	AR0
 	JMP	UART_end				;Exit
 	
 	uart_rxc_data:
-	MOVX	@R1, A					;Save the word in buffer
-	INC	R1					;Pointer inc
-	
-	CJNE	R1, #RX_BUFFER_END, uart_end		;Is package fully received?
-	SETB	F0
+	MOV	DPH, #HIGH RX_BUFFER_BEGIN		;Get pointer
+	MOV	DPL, RX_BUFFER_P
+	MOVX	@DPTR, A				;Save the word in buffer
+	INC	RX_BUFFER_P				;Pointer inc
 	
 UART_end:
+	POP	DPL
+	POP	DPH
 	POP	PSW
 	POP	ACC
 	RETI
