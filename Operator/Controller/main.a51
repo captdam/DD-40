@@ -109,12 +109,13 @@ INI:							;Boot setup
 	
 	MOV	TX_BUFFER_P, #LOW TX_BUFFER_BEGIN	;Reset Tx/Rx buffer pointer (flush buffers)
 	MOV	RX_BUFFER_P, #LOW RX_BUFFER_BEGIN
-	MOV	LCD_BUFFER_P, #LCD_BUFFER		;Reset LCD buffer pointer
+	MOV	LCD_BUFFER_P, #LOW LCD_BUFFER		;Reset LCD buffer pointer
 	
 	SETB	EA
 	
 MAIN:							;Main cycle: execute while receive synch signal
 	CLR	LED_IDEL
+	INC	R5;;;;;
 	
 SCAN:							;Scan keyboard
 	MOV	KEY_SCAN, #0xFF
@@ -247,6 +248,7 @@ COMMAND_UI:						;Update command data to LCD0 buffer
 ;	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
 ;	MOV	DIGI_BUFFER_H, #0x02
 ;	MOV	DIGI_BUFFER_L, #0x03
+	MOV	DIGI_BUFFER_L, R5;;;;;
 ;	;End of test
 	
 	MOV	A, PITCH_DEST				;PITCH_DEST 100
@@ -367,8 +369,8 @@ TIMER_0:						;Update LCD
 	PUSH	DPH
 	PUSH	DPL
 	
-	MOV	TH0, #0xFE				;Sample from ROV every 25000us, LCD sample from sample every 12500us
-	MOV	TL0, #0xD4				;16*2 LCD = 32chars, using 40 --> Update LCD every 300us (-300 = 0xFED4)
+	MOV	TH0, #0xF4				;Sample from ROV every 250000us, LCD sample from sample every 125000us
+	MOV	TL0, #0x48				;16*2 LCD = 32chars, using 40 --> Update LCD every 3000us (-3000 = 0xF448)
 	
 	MOV	A, LCD_BUFFER_P				;Check line end
 	
@@ -435,6 +437,10 @@ UART_txc:
 	MOVX	A, @DPTR
 	MOV	SBUF, A
 	INC	TX_BUFFER_P				;Pointer inc
+	
+	MOV	A, TX_BUFFER_P				;Rollback pointer if reach boyundary
+	CJNE	A, #TX_BUFFER_ENDX, UART_end
+	DEC	TX_BUFFER_P
 	JMP	UART_end
 	
 UART_rxc:
@@ -465,6 +471,10 @@ UART_rxc:
 	MOV	DPL, RX_BUFFER_P
 	MOVX	@DPTR, A				;Save the word in buffer
 	INC	RX_BUFFER_P				;Pointer inc
+	
+	MOV	A, RX_BUFFER_P				;Rollback pointer if reach boyundary
+	CJNE	A, #RX_BUFFER_ENDX, UART_end
+	DEC	RX_BUFFER_P
 	
 UART_end:
 	POP	DPL

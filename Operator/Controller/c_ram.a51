@@ -36,13 +36,14 @@
 
 	TX_BUFFER_BEGIN	EQU	0x0080			;UART Tx buffer
 	TX_BUFFER_END	EQU	TX_BUFFER_BEGIN + TX_PACK_SIZE + 1
+	TX_BUFFER_ENDX	EQU	0x00BF			;Boundary (not included), highest valve for the buffer
 	;	FB_VALVE+LED	LR_VALVE	UD_VALVE	C_OUT		ENGINE_POWER
 	;	PRESSURE_DEST_L	PRESSURE_DEST_H	PITCH_DEST_L	PITCH_DEST_H	COMPASS_DEST_L
 	;	COMPASS_DEST_H	C_PWM		(checksum)
 	RX_BUFFER_BEGIN	EQU	0x00C0			;UART Rx buffer
 	RX_BUFFER_END	EQU	RX_BUFFER_BEGIN + RX_PACK_SIZE + 1
+	RX_BUFFER_ENDX	EQU	0x00FF			;Boundary (not included), highest valve for the buffer
 	;	PRESSURE_REAL_L	PRESSURE_REAL_H	PITCH_REAL_L	PITCH_REAL_H	COMPASS_REAL_L
 	;	COMPASS_REAL_H	TEMPERATURE_L	TEMPERATURE_H	BAT_VLOTAGE_L	BAT_VLOTAGE_H
 	;	(checksum)
-	;Rx buffer is at the end, while Rx overflow, it will write to void (0x0100+) instead of overwriting other data
 	
