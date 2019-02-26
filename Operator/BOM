@@ -1,15 +1,25 @@
 Bill of Material
 
-STC80C52RC		1	Center MCU
-LCD-1602		2	Data display
-Switches
-	DIP8		1	User custom (C_OUT) data input
-	Tactile		17	Digital input
-	Toggle-OFO	5	Direction control
-	Toggle-OF	7	Function switch
-LCD Monitor		1	Camara monitor
-12V Battery		1	Power supply, larger is better
+Electrical (circuit) -------------------
+STC80C52RC			1	Center MCU
 Some circuit comp
-	7805		1	Power regulator
-	Diode		30	Prevent ghost key for the matrix keyboard
-Workstation case	1	Any kind of case is fine
+7805				1	Power regulator
+1N4007				~50	Prevent ghost key for the matrix keyboard
+Switches
+	DIP8			1	User custom (C_OUT) data input
+	Tactile			17	Digital input
+	Toggle-OFO		5	Direction control
+	Toggle-OF		7	Function switch
+and ect...			x	(some resistors, capacitors... Only core parts are list here. For deatil, see the schema)
+
+Electrical (module) --------------------
+LCD-1602			2	Data display
+LCD Monitor			1	Camara monitor
+
+Electrical (misc) ----------------------
+12V Battery 7.5AH		1	Power supply, larger is better
+7-pins cable connector		1	Control/data&power supply cable connectore (V+, V-, Tx+, Tx-, Rx+, Rx-, Video)
+
+Misc -----------------------------------
+Workstation case		1	Any kind of case is fine
+Screws				x	Assemble the console (For detail, see mech design)
