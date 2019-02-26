@@ -25,6 +25,8 @@
 	TX_BUFFER_P	DATA	0x53
 	RX_BUFFER_P	DATA	0x54
 	LCD_BUFFER_P	DATA	0x55			;Pointers of both LCD is same
+	
+;	FP		DATA	0x7F			;Frame pointer
 
 ;App XRAM
 	LCD_BUFFER	EQU	0x0000			;LCD display buffer

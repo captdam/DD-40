@@ -33,18 +33,65 @@ $INCLUDE	(f_lcd.a51)
 DIGITAL_INPUT:						;User enter a digital to AutoPilot console
 	MOV	DIGI_BUFFER_E, DIGI_BUFFER_H		;Data shift left, Data Low = input
 	MOV	DIGI_BUFFER_H, DIGI_BUFFER_L
-	MOV	DIGI_BUFFER_L, A
+	MOV	DIGI_BUFFER_L, A			;Input is guaranted to be from 0x00-0x09
 	RET
 
-DIGITAL_APPLY_PITCH:					;User apply value from gitital input buffer to AutoPilot pitch control
+DIGITAL_APPLY_PITCH:					;User apply value from gitital input buffer to AutoPilot pitch control, check required
+	MOV	A, DIGI_BUFFER_L			;Apply PITCH_DEST low, assume it is correct
+	SWAP	A
+	MOV	PITCH_DEST+1, A
 	
-	RET
-
-DIGITAL_APPLY_COMPASS:					;User apply value from gitital input buffer to AutoPilot compass control
+	MOV	A, DIGI_BUFFER_E			;Apply PITCH_DEST high as well
+	SWAP	A
+	ORL	A, DIGI_BUFFER_H
+	MOV	PITCH_DEST, A
 	
+	MOV	B, A					;Save PITCH_DEST high (100s and 10s)
+	
+	ADD	A, #-0x09				;Is the value >= 90? (90=090, on 100s and 10s: xx0 => 09)
+	JNC	digital_apply_pitch_end			;8+(-9):NC; 9+(-9):C; 10+(-9): C;
+	
+	MOV	A, B					;And the value <= 270 as well?
+	SUBB	A, #0x27				;26-(27):C; 27-(27):NC; 28-(27):NC
+	JNC	digital_apply_pitch_end
+	
+	;Note:	91, 92: invalid: disable 90.
+	;	271, 272: valid: enable 270. <-- simpler, good
+	
+	MOV	PITCH_DEST, #0x00			;90 <= PITCH_DEST < 270, invalid input! Correct to 0
+	MOV	PITCH_DEST+1, #0x00
+	
+	digital_apply_pitch_end:
 	RET
 
-DIGITAL_APPLY_PRESSURE:					;User apply value from gitital input buffer to AutoPilot pressure (depth) control
+DIGITAL_APPLY_COMPASS:					;User apply value from gitital input buffer to AutoPilot compass control, check required
+	MOV	A, DIGI_BUFFER_L			;Apply COMPASS_DEST low, assume it is correct
+	SWAP	A
+	MOV	COMPASS_DEST+1, A
+	
+	MOV	A, DIGI_BUFFER_E			;Apply COMPASS_DEST high as well
+	SWAP	A
+	ORL	A, DIGI_BUFFER_H
+	MOV	COMPASS_DEST, A
+	
+	ADD	A, #-0x36				;Is the number >= 360
+	JNC	digital_apply_compass_end		;35+(-36):NC; 36+(-36):C
+	
+	MOV	COMPASS_DEST, #0x00			;COMPASS >= 360, invalid input! Correct to 0
+	MOV	COMPASS_DEST+1, #0x00
+	
+	digital_apply_compass_end:
+	RET
+
+DIGITAL_APPLY_PRESSURE:					;User apply value from gitital input buffer to AutoPilot pressure (depth) control, any depth is OK
+	MOV	A, DIGI_BUFFER_E			;Apply PRESSURE_DEST high (xx.00m)
+	SWAP	A
+	ORL	A, DIGI_BUFFER_H
+	MOV	COMPASS_DEST, A
+	
+	MOV	A, DIGI_BUFFER_L			;Apply PRESSURE_DEST high (00.xxm), leave 0.01s to be 0 (resolution 0.1m)
+	SWAP	A
+	MOV	COMPASS_DEST+1, A
 	
 	RET
 
