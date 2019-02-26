@@ -1,12 +1,43 @@
 Semester I
+
 Feb 1	ROV mechanical structure design.
+	ROV structure design								Finished at Jan 24
+
 Feb 15	ROV actuator design.
+	ROV actuator design								Finished at Jan 24
+
 Mar 1	ROV control circuit design (hardware).
+	ROV circuit design								WIP
+
 Mar 15	ROV control unit design (software abstraction).
+	ROV software abstraction							Finished at Feb 19
+
 Mar 29	Operator controller design (operator-side hardware and software abstraction).
+	Operator console hardware design						Finished at Feb 20
+	Operator console software abstraction						Finished at Feb 19
+
 
 Semester II
+
 May 10	ROV mechanism and actuator implementation.
+	ROV structure fab								PENDING
+	ROV actuator installing								PENDING
+
 Jun 30	ROV-side and operator-side controller software implementation.
+	Operator console software							Finished at Feb 26
+	ROV software									WIP
+
 Jul 24	Experiment and testing the ROV in swimming pool.
+	Operator console software test							PENDING
+	ROV software test								PENDING
+	System software test								PENDING
+	Operator console circuit test							PENDING
+	ROV circuit test								PENDING
+	System circuit test								PENDING
+	System test (simulation)							PENDING
+	System test (swimming pool, clean water)					PENDING
+	System test (lake, dirty water)							PENDING
+
 Aug 1	Improving and documentation.
+	Improving									PENDING
+	Documentation									PENDING
