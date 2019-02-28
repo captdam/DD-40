@@ -18,6 +18,7 @@ Feb 04		Finalize communication protocol and ROV's pin map.
 Feb 04		Letter of Intent first draft.
 Feb 08		Finalize the Letter of Intent.
 Feb 12		Make battery voltage binary to BCD lookup table.
+Feb 16		Study the ROV pressure vessel material.
 
 Feb 19		Study and test the LCD display.
 Feb 19		Re-design the communication protocol (less data, simpler synch algorithm <-- which is better)
