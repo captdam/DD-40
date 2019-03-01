@@ -27,3 +27,5 @@ Feb 20		Operator console design (mech).
 Feb 23		Operator console code finished and tested (except for keyboard functions).
 
 Feb 26		Operator console code: userInputApply (keyboard functions).
+Feb 28    design variant of RS 485 circuit.
+Mar 1     design variant of astable multivibrator.
