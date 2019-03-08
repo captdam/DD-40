@@ -17,6 +17,20 @@ The chart below shows a simnple flow of the controlling system. Notice that, the
 
 ![Operator Flow Chart](https://raw.githubusercontent.com/captdam/DD-40/master/Operator/Controller/Operator%20Flow%20Chart.jpg "Operator Flow Chart")
 
+### Process flow
+0. System initialization: Setup UART and LCD display refersh timer.
+1. Wait for SYNCH signal: The ROV will send a SYNCH signal to the operator-side console, that will synchlize the operator-side console with the ROV (the ROV is the master). This helps the operator-side console and the ROV be in the same phase.
+2. Get user input: Scan the input matrix (keyboard, switches and joystick).
+3. Packing the data (command): Encode the user input, calculate the checksum and then send the package to the ROV. Notice, this starts the transmission process, this process will takes few miniseconds (about 50ms to 100ms).
+4. Update command UI: Display the user input data on the LCD display.
+5. Wait for RECEIVED signal: The ROV will send package to the operator-side console. The first byte of the package is the SYNCH signal, follow by 10 to 15 bytes of data. The transmission process will take a while, and the package my not be fully received before this step. In this step, the MCU will stall here, until the package is fully received.
+6. Verify the data: Check the checksum.
+7. Decode the data.
+8. Update command UI: Display the ROV data on the LCD display.
+9. Go back to step 1.
+
+## Process design
+
 ### Main process
 When the operator-side console reset (power on or push the reset key), the MCU will first initial the system. After this, the MCU will begin to listen the ROV vis the UART. Once the operator-side console see a SYNCH signal from the ROV, it will scan the user input (user command) from the keyboard, switches and joystick, and then encode (pack) the user input into package and send to ROV. At the same time, the MCU will listen the coming data from the ROV. Once the package from the ROV is fully decoded, the MCU will decode and check the package. If the package is verified to be correctly transmitted, the MCU will display the data to user.
 
