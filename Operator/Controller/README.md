@@ -1,4 +1,4 @@
-# Operator-side console
+# Operator-side console tech document - Software
 
 ## About this document
 
@@ -28,6 +28,7 @@ The chart below shows a simnple flow of the controlling system. Notice that, the
 7. Decode the data.
 8. Update command UI: Display the ROV data on the LCD display.
 9. Go back to step 1.
+
 
 ## Process design
 
@@ -67,12 +68,34 @@ To calculate the proper speed of the LCD subroutine:
 - T_interrupt = 3.6ms (To have a safty factor, using 3ms)
 
 Performance difference between Stall method and Buffer_Interrupt method:
+
 Write to LCD take 20 cycles
-- Stall:
+- Stall method:
 	34 writes: 34 * (20 cycles to write + 100 cycles stall) = 4080 cycles
-- Buffer_Interrupt:
+- Buffer_Interrupt method:
 	34 writes: 34 * 2 sample ratio * (20 cycles to write + 20 cycles of interrupt routine init) = 2720 cycles
-- Buffer_Interrupt method is better
+- Buffer_Interrupt method is better.
+
+### Process window
+As the chart shows, there is three process execute simultaneously: the main process, the UART interrupt process and the Timer0 interrupt process. The main process takes care of user input, package encode/decode/check; the UART process takes care of the communication between the operator-side console and the ROV; the Timer0 takes care of LCD display.
+
+For the UART interrput process, becuase the UART on this MCU is full-duplex, the UART process could be consider as two sub-process: the transmitter process and the receiver process. In another word, there are 4 logic process executed on the MCU parallely, that are:
+	- MAIN
+	- UART Tx (transmitter)
+	- UART Tx (receiver)
+	- LCD
+
+In the process loop:
+
+**[_S1]_** At the beginning, the operator-side console is waiting package from the ROV. **[_S6]_** Before the operator could do any data processing, the package needs to be fully received. Hence, the window for Rx receiver is S2, S3 and S4.
+
+In state 3 of the main process **[_S3]_** , the operator-side console will pack the package and send the first word. Before the loop ends **[_S8]_** , the package should be fully send out. Because the transmission takes a while, there should be extra time before the loop ends. Hence, the window for Tx transmitter includes part of S3, from S4 to S7, and the beginning of S8, shorter is better.
+
+To update LCD display, the MCU writes to buffer, and a timer interrupt constantly rise and write the data to the LCD modules. Hence, the window for LCD writing covers the entire loop.
+
+this means, the window of UART is limited, packages need to be send in the given time. To have long-distance tranmission, the BAUD rate of the UART is low. To have precise control, the loop needs to be short (so the frequency will be higher). In this design, the BAUD rate is 2400 and the loop time is 250ms. That been said:
+	- The transmission system cannot handle too much word, otherwise it will not be possible to transit the package in the give window. Hence, only critical data should be put on the line.
+	- When writing the code, try to provide more time for these two window. this means, making S6, S7 and S6 shorter.
 
 
 ## Code description
