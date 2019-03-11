@@ -6,6 +6,7 @@
 	RX_PACK_SIZE	EQU	10
 	TX_PACK_SIZE	EQU	12
 	
+	DIGITAL_PRESCA	EQU	4			;Digital input scan prescaller (orginal speed = 4Hz @ best communication environment)
 
 	
 ;App pins
