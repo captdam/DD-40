@@ -80,10 +80,10 @@ Write to LCD take 20 cycles
 As the chart shows, there is three process execute simultaneously: the main process, the UART interrupt process and the Timer0 interrupt process. The main process takes care of user input, package encode/decode/check; the UART process takes care of the communication between the operator-side console and the ROV; the Timer0 takes care of LCD display.
 
 For the UART interrput process, becuase the UART on this MCU is full-duplex, the UART process could be consider as two sub-process: the transmitter process and the receiver process. In another word, there are 4 logic process executed on the MCU parallely, that are:
-	- MAIN
-	- UART Tx (transmitter)
-	- UART Tx (receiver)
-	- LCD
+- MAIN
+- UART Tx (transmitter)
+- UART Tx (receiver)
+- LCD
 
 In the process loop:
 
@@ -94,23 +94,23 @@ In state 3 of the main process **[_S3]_** , the operator-side console will pack 
 To update LCD display, the MCU writes to buffer, and a timer interrupt constantly rise and write the data to the LCD modules. Hence, the window for LCD writing covers the entire loop.
 
 this means, the window of UART is limited, packages need to be send in the given time. To have long-distance tranmission, the BAUD rate of the UART is low. To have precise control, the loop needs to be short (so the frequency will be higher). In this design, the BAUD rate is 2400 and the loop time is 250ms. That been said:
-	- The transmission system cannot handle too much word, otherwise it will not be possible to transit the package in the give window. Hence, only critical data should be put on the line.
-	- When writing the code, try to provide more time for these two window. this means, making S6, S7 and S6 shorter.
+- The transmission system cannot handle too much word, otherwise it will not be possible to transit the package in the give window. Hence, only critical data should be put on the line.
+- When writing the code, try to provide more time for these two window. this means, making S6, S7 and S6 shorter.
 
 
 ## Code description
 
 1 . Why assembly instead of C?
-	- On 8051, resources are limited. Using assembly helps precisely control resource usage.
-	- The MCU used here is a modified version of orginal Interl 8051. Althrough the MCU is compatible with the legacy C51 compiler, it cannot utilize all resource provided by the MCU, and it may utilize some resource exist on the legacy Intel 8051 but aviable on the MCU.
-	- Some tricky could be performed in assembly (e.g. frame buffer modification). Something could not be done if using C.
-	- Writing in assembly provides more control of the device than C (e.g. stack manipulation).
-	- Higher performance.
+- On 8051, resources are limited. Using assembly helps precisely control resource usage.
+- The MCU used here is a modified version of orginal Interl 8051. Althrough the MCU is compatible with the legacy C51 compiler, it cannot utilize all resource provided by the MCU, and it may utilize some resource exist on the legacy Intel 8051 but aviable on the MCU.
+- Some tricky could be performed in assembly (e.g. frame buffer modification). Something could not be done if using C.
+- Writing in assembly provides more control of the device than C (e.g. stack manipulation).
+- Higher performance.
 2. Design philosophy： (MIPS 4 disign principles)
-	- _Simplicity favors regularity._
-	- _Smaller is faster._
-	- _Good design demands compromise._
-	- _Make the common case fast._
+- _Simplicity favors regularity._
+- _Smaller is faster._
+- _Good design demands compromise._
+- _Make the common case fast._
 
 In this section, each lines of the code will be reviewd. Inline commentis given in the code.
 
