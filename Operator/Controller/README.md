@@ -117,4 +117,19 @@ In this section, each lines of the code will be reviewed. Inline comments are gi
 
 Code will be divided into blocks, and comments are given to each block.
 
-(WIP)
+### Note
+When coding, following these:
+1. There is 4 register banks, and each bank has 8 registers. 2 of the 8 registers has the ability of register addressing. The main routine uses regsiter bank 0; the timer 0 ISR uses register bank 2; and the UART ISR uses register bank 3. Register banks uses same instruction but different physical RAM address. Using different register banks help reduce house keeping overhead.
+2. There is 4 RAM space:
+	- SRAM 0x00 - 0x7F: Registers, custom static variables.
+	- SRAM 0x80 - 0xFF (direct address): SFR of the MCU.
+	- SRAM 0x80 - 0xFF (indirect addressing / register addressing): Stack.
+	- XRAM 0x0000 - 0x00FF: External (used to be external, but now build-in, can be extended by adding external RAM chip): UART and LCD buffer.
+3. When should use loop / loop unrolling, function / function inlining:
+	- If only used once or few times: loop unrolling and function inlining. Using loop or functiin cannot reduce code size, plus it will increase house keeping overhead.
+	- If timing is critical: loop unrolling and function inlining. Calling / return from function takes a few cycle; loop control takes some cycles.
+	- If the function body / loop body is very small: loop unrolling and function inlining. Using function / loop reduce the ratio of function/cycle.
+	- If used for more times: loop and function. It is worth to increase some overhead, because it save a great amount of ROM space.
+
+### 
+
