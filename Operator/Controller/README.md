@@ -33,7 +33,7 @@ The chart below demonstrates a simple flow of the control system. Notice that, t
 ## Process design
 
 ### Main process
-**[_S0]_** When the operator-side console was reset by turning on the power or pushing the reset key, the MCU initialize the system firstly. The initialization includes turning on UART transmitter/receiver, starting timer for LCD, and initializing LCD display. Furthermore, the MCU will begin to listen the ROV via the UART.
+**_[S0]_** When the operator-side console was reset by turning on the power or pushing the reset key, the MCU initialize the system firstly. The initialization includes turning on UART transmitter/receiver, starting timer for LCD, and initializing LCD display. Furthermore, the MCU will begin to listen the ROV via the UART.
 
 **_[S1]_** The ROV sends package to the Operator-side console every 250ms, and the first word in the package is always SYNCH. Once the operator-side console see a SYNCH signal from the ROV, **_[S2]_** it will scan users’ input (users’ command) from the keyboard, switches and joysticks. **_[S3]_** Furthermore, the MCU will encode (pack) users’ input into a package, calculate the checksum, and send the packet and checksum to ROV. Since the UART is a slow device (BAUD = 2400) compare to the MCU's CPU clock, the MCU cannot afford the time of waiting the UART to send all the data out before moving to next state. In this case, the MCU will write all data into Tx buffer (in XRAM of 8051) and start the UART transmitter.
 
@@ -78,7 +78,7 @@ Writing to LCD takes 20 cycles.
 - As the result, Buffer_Interrupt method is better.
 
 ### Process window
-According to ?????the chart?????, there is three processes execute simultaneously, which are the main process, the UART interrupt process and the Timer0 interrupt process. The main process takes care of users’ input and package encode/decode/check; the UART process takes care of the communication between the operator-side console and the ROV; the Timer0 process takes care of LCD display.
+According to ?????the chart?????（FSM图，上面的）, there is three processes execute simultaneously, which are the main process, the UART interrupt process and the Timer0 interrupt process. The main process takes care of users’ input and package encode/decode/check; the UART process takes care of the communication between the operator-side console and the ROV; the Timer0 process takes care of LCD display.
 
 For the UART interrupt process, since the UART on this MCU is full-duplex, the UART process could be considered as two sub-process: the transmitter process and the receiver process. In another word, there are 4 logic process executed on the MCU parallelly, which are:
 - MAIN
@@ -88,9 +88,9 @@ For the UART interrupt process, since the UART on this MCU is full-duplex, the U
 
 In the process loop:
 
-**[_S1]_** At the beginning, the operator-side console is waiting for package from the ROV. **[_S6]_** Before the operator could do any data processing, the package needs to be fully received. Therefore, the window for Rx receiver is S2, S3 and S4.
+**_[S1]_** At the beginning, the operator-side console is waiting for package from the ROV. **_[S6]_** Before the operator could do any data processing, the package needs to be fully received. Therefore, the window for Rx receiver is S2, S3 and S4.
 
-In state 3 of the main process **[_S3]_** , the operator-side console will pack the package and send the first word of it. Before the loop ends **[_S8]_** , the package should be fully sent. Since the transmission takes some time, there should be extra time before the loop ends. Hence, the window for Tx transmitter includes part of S3, from S4 to S7, and the beginning of S8. ?????Shorter is better?????.
+In state 3 of the main process **_[S3]_** , the operator-side console will pack the package and send the first word of it. Before the loop ends **_[S8]_** , the package should be fully sent. Since the transmission takes some time, there should be extra time before the loop ends. Hence, the window for Tx transmitter includes part of S3, from S4 to S7, and the beginning of S8. ?????Shorter is better????? (window越短越好，不然会导致数据不能再window内完全传输).
 
 In order to update LCD display, the MCU writes to buffer, and a timer interrupt constantly rise and write the data to the LCD modules. Hence, the window for LCD writing covers the entire loop.
 
