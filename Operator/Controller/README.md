@@ -90,7 +90,7 @@ In the process loop:
 
 **_[S1]_** At the beginning, the operator-side console is waiting for package from the ROV. **_[S6]_** Before the operator could do any data processing, the package needs to be fully received. Therefore, the window for Rx receiver is S2, S3 and S4.
 
-In state 3 of the main process **_[S3]_** , the operator-side console will pack the package and send the first word of it. Before the loop ends **_[S8]_** , the package should be fully sent. Since the transmission takes some time, there should be extra time before the loop ends. Hence, the window for Tx transmitter includes part of S3, from S4 to S7, and the beginning of S8. ?????Shorter is better????? (window越短越好，不然会导致数据不能再window内完全传输).
+In state 3 of the main process **_[S3]_** , the operator-side console will pack the package and send the first word of it. Before the loop ends **_[S8]_** , the package should be fully sent. Since the transmission takes some time, there should be extra time before the loop ends. Hence, the window for Tx transmitter includes part of S3, from S4 to S7, and the beginning of S8. ?????Shorter is better????? (UART传输时间越短越好，不然会导致数据不能再window内完全传输。另外顺便加一句：There are two method to decrease the length of UART process: sending less word, or sending word faster. Because fasst transmission is not reliable in long-range envirnoment; hence, the key to solve this problem is to send less word. That means, only send the critical data.).
 
 In order to update LCD display, the MCU writes to buffer, and a timer interrupt constantly rise and write the data to the LCD modules. Hence, the window for LCD writing covers the entire loop.
 
