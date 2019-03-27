@@ -78,7 +78,7 @@ Writing to LCD takes 20 cycles.
 - As the result, Buffer_Interrupt method is better.
 
 ### Process window
-According to ?????the chart?????（FSM图，上面的）, there is three processes execute simultaneously, which are the main process, the UART interrupt process and the Timer0 interrupt process. The main process takes care of users’ input and package encode/decode/check; the UART process takes care of the communication between the operator-side console and the ROV; the Timer0 process takes care of LCD display.
+According to the FSM chart, there is three processes execute simultaneously, which are the main process, the UART interrupt process and the Timer0 interrupt process. The main process takes care of users’ input and package encode/decode/check; the UART process takes care of the communication between the operator-side console and the ROV; the Timer0 process takes care of LCD display.
 
 For the UART interrupt process, since the UART on this MCU is full-duplex, the UART process could be considered as two sub-process: the transmitter process and the receiver process. In another word, there are 4 logic process executed on the MCU parallelly, which are:
 - MAIN
@@ -90,7 +90,7 @@ In the process loop:
 
 **_[S1]_** At the beginning, the operator-side console is waiting for package from the ROV. **_[S6]_** Before the operator could do any data processing, the package needs to be fully received. Therefore, the window for Rx receiver is S2, S3 and S4.
 
-In state 3 of the main process **_[S3]_** , the operator-side console will pack the package and send the first word of it. Before the loop ends **_[S8]_** , the package should be fully sent. Since the transmission takes some time, there should be extra time before the loop ends. Hence, the window for Tx transmitter includes part of S3, from S4 to S7, and the beginning of S8. ?????Shorter is better????? (UART传输时间越短越好，不然会导致数据不能再window内完全传输。另外顺便加一句：There are two method to decrease the length of UART process: sending less word, or sending word faster. Because fasst transmission is not reliable in long-range envirnoment; hence, the key to solve this problem is to send less word. That means, only send the critical data.).
+In state 3 of the main process **_[S3]_** , the operator-side console will pack the package and send the first word and the package should be fully sent before the end of **_[S8]_** . Since the transmission takes time and the time of the whole frame(s1 to s8) can not be changed, the processing time before **_[S3]_** should be as short as possible in order to leave enough time for the transmission. Meanwhile, even though the window for the Tx transmitter includes a part of S3, S4, S5, S6, S7, and the beginning of S8, it is very necessary to make the transmission period as short as possible. There are two methods to reduce the time of UART processing. One is sending fewer words, and the other one is to send words faster. Since fast transmission speed is not reliable in the long-range environment, the only way to reduce the time is to reduce the length of the message. As a result, the UART will only send critical data.
 
 In order to update LCD display, the MCU writes to buffer, and a timer interrupt constantly rise and write the data to the LCD modules. Hence, the window for LCD writing covers the entire loop.
 
