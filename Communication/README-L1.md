@@ -74,7 +74,7 @@ There is two designs developed, one using OpAmp, another one using NMOS. The fol
 
 ![RS-485 using OpAmp](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/RS-485%20like%20OpAmp.JPG "RS-485 using OpAmp")
 
-Bad: Delay, size, require OP27 and OP37 (more kinds of parts), 1V offset
+Bad: Delay, size, require OP27 and OP37 (more kinds of parts)
 
 
 ### Method 2 - NMOS
@@ -86,3 +86,5 @@ Bad: Power comsuption
 ------
 
 As the simulation result shows, the NMOS solution comes with less delay. Plus, the NMOS solution is cheaper.
+
+Notice: there is a 1V output offset. Using a diode to cut the offset.
