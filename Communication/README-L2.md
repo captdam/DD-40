@@ -1,21 +1,15 @@
-# Communication protocol tech document - Transportation layer
+# Communication protocol tech document - Transport layer
 
 ## Introduction
-
-The ROV system contains two parts, the operator-side console and the ROV itself. During the operation, the user will use the operator-side console to send command to the ROV, such as direction; mean while, the ROV will send back data to the operator-console, including the battery voltage, depth and ect..
-
-To establish a reliable and easy-to-implement communication between the ROV and the operator-side console, a communication sub-system is used in the ROV system. The communication system has 3 layers, the physical layer (real circuit and cable), the transportation layer (provides a reliable data transmission), and the application layer (data exchange between the ROV and operator-side console).
-
-In this document, the method used by the transportation layer of the communication system will be discuesd here.
-
+In this document, the method used by the transport layer of the communication system will be discuesd here.
 
 ## Purpose
 
 The communication protocol is a full-duplex asynchronous UART communication, which means, there is only two wire: one for sending, one fore receiving. That been said, the ROV and the operator-side console could send data to each others at the same time. The resaon of using the UART is because that, the UART is supported by the MCU.
 
 However, the communication protocol also comes with issues:
-- The communication data will be put into a package by the application, and then send to the transportation layer. The UART has start bit and stop bit that indecates the start and end of a word (usually 8-bits), but there is no way to indecates the start and end of a package. Hence, the transportation layer needs to identify the start and end of a package.
-- The physical layer is not 100% reliable, hence, the transportation layer should be able to detect error in the package.
+- The communication data will be put into a package by the application, and then send to the transport layer. The UART has start bit and stop bit that indecates the start and end of a word (usually 8-bits), but there is no way to indecates the start and end of a package. Hence, the transport layer needs to identify the start and end of a package.
+- The physical layer is not 100% reliable, hence, the transport layer should be able to detect error in the package.
 
 ## Solutions
 
