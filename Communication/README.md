@@ -9,7 +9,7 @@ To establish a reliable and easy-to-implement communication between the ROV and 
 - MCU data registers map (App SFR)
 - Package data structure
 
-## Transportation layer
+## Transport layer
 - https://github.com/captdam/DD-40/blob/master/Communication/README-L2.md
 - Package regulation
 - Error detection
