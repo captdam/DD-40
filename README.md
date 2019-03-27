@@ -11,5 +11,7 @@ University of Windsor Electrical and Computer Engineering Undergraduate Capstone
 - Software: WIP
 - Hardware: WIP
 ## Communication
-- Software: WIP
-- Hardware: WIP
+- Overview: https://github.com/captdam/DD-40/blob/master/Communication/README.md
+- Application layer: https://github.com/captdam/DD-40/blob/master/Communication/README-L3.md
+- Transport layer: https://github.com/captdam/DD-40/blob/master/Communication/README-L2.md
+- Physical layer: https://github.com/captdam/DD-40/blob/master/Communication/README-L1.md
