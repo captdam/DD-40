@@ -64,27 +64,22 @@ However, this protocol also has some limitations. Firstly, the package cannot be
 
 ## Edge cases
 
-### Perfect consition
-
+### Perfect condition
+The data is successfully exchanged between the ROV and the operator-side console.
 
 ### One or more word lost
-
-
+There will be not enough data in the receiver's bufffer, hence, the package will not be processed by the MCU. Once the next package arrive, this package will be discard.
 
 ### One or more word corrput
+The checksum and the packga is not matched, hence, the opackage will be discard.
 
-
+It is possible that, in the package from ROV to operator-side console, the value of the corrput byte becomes 0xFF, which triggers a SYNCH signal. In this case, the operator-side console will re-send command to ROV. However, 前半部分和后半部分长度都不够（same as one or more word lost）
 
 ### SYNCH word loss
-
-
+This frame will not trigger SYNCH condition, hence, the current package will not be processed.
 
 ### SYNCH word corrupt
-
-
+This frame will not trigger SYNCH condition, hence, the current package will not be processed.
 
 ### Data and checksum corrput at same time
-
-Very very unsuccessfully, the incorrect checksum matches with the incorrect package.
-
-OK, the system doomed. But, WHen the next package succefully arrive, everyting will go back on the track.
+Very very unsuccessfully, the incorrect checksum matches with the incorrect package. OK, the system doomed. But, When the next package succefully arrive, everyting will go back on the track.
