@@ -10,7 +10,7 @@ There is full-duplex UART port on the ROV's controller (ATmeage328P) and the ope
 
 The ROV is a remotely controlled device, which means, the deeper the ROV dives, the higher the ROV's capability will be. However, when the depth of the ROV increases, the distance between the ROV and the operator-side console increases as well.
 
-Since wireless communication is impossible due to the technical limitation, a cable is applied to connect the ROV and the operator-side console. However, the wire communication still has some issue as well. The wire acts like an antenna so that it could gather noises. The longer the wire, the stronger the EMI noise will be gathered from the environment. Additionally, the faster the transmission speed, the stronger the wire will be created.
+Since wireless communication is impossible due to the physical limitation, a cable is applied to connect the ROV and the operator-side console. However, the wire communication still has some issue as well. The wire acts like an antenna so that it could gather noises. The longer the wire, the stronger the EMI noise will be gathered from the environment. Additionally, the faster the transmission speed, the stronger the noise will be created.
 
 Additionally, the physical layer should provide real-time communication and the circuit delay should be in an acceptable range.
 
@@ -30,6 +30,7 @@ By analyzing of the software:
 2. Assume the ROV and operator-side console takes about 100ms to prepare data, encode and decode the package. As a result, the window for data transmission is 150ms.
 2. In each frame, the ROV and the operator exchanges about 20 bytes (10 to 20) of data.
 3. Each byte consider as 8 bits, plus a start bit and a stop byte.
+
 (8 + 1 + 1) * 20 * (1/0.15) = 1333 BAUD
 
 Ceiling to the lowest standard BAUD, the BAUD used by this system is 2400 BAUD.
@@ -47,11 +48,19 @@ To deal with the noise issue, a differential signalling system is applied for th
 
 For example, when the master drives the wire high, wire A will be high (5V), and wire B will be low (0V). Since the voltage on wire A is higher than the voltage on wire B, the receiver could know the signal on the wire is high:
 
-Tx = 1; A = 5V; B = 0V; Rx = (A-B>0) ? 1 : 0 = 1
+Tx = 1;
+
+A = 5V; B = 0V;
+
+Rx = (A-B>0) ? 1 : 0 = 1
 
 If applying a XV (X = negative infinity to positive infinity) noise:
 
-Tx = 1; A' = 5V + X; B' = 0V + X; A' - B' = (5V + X) - (0V + X) = 5V - 0V = A - B;
+Tx = 1;
+
+A' = 5V + X; B' = 0V + X;
+
+A' - B' = (5V + X) - (0V + X) = 5V - 0V = A - B;
 
 By using the differential signalling, the noise is filtered.
 
