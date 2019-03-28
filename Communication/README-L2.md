@@ -11,13 +11,13 @@ However, the communication protocol also comes with some issues such as identifi
 
 ## Solutions
 
-### _Why do we use TCP protocol?_
+### _TCP protocol?_
 
 The TCP protocol is a good reliable transportation method for computer and the high-end embedded system only because it consumes too much memory and computational power. Due to its power consumption, it is not good for the low-end embedded system.
 
 **As a result, the solution is to use custom protocol.**
 
-### Send and Retry
+### _Send and Retry?_
 
 1. Master sends a package to the slave.
 2. If the slave fully receives the package and the package correctness is verified, it will send acknowledgement packet (ACK). If there is no package to be received or the received package is incorrect or not fully, do not send ACK.
@@ -57,9 +57,9 @@ Both packages include a checksum word. Furthermore, there is no package length e
 Once the package is fully received by the ROV or the operator-side console, the package will be decoded. For both sides, if the received package is correct, the package will be de-packed, and then send it to the application layer.
 
 The following figure shows how the communication protocol works:
-===============================  WIP  ===============================
+![Communication flow](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/Communication%20flow.jpeg "Communication flow")
 
-However, this protocol also has some limitations. Firstly, the package cannot be too large. Due to the physical issue, the longer the cable, the worse the communication quality will be. To have a reliable transmission, the BAUD rate of the communication is set to 2400 BAUD. Since the operator-side console and the ROV exchange data every 1/4 second, the transmission line can only support up to 240 bits of data. Since the UART is using a 10-bit encoder (1-bit starting, 8-bit data, 1-bit ending), only 24 bytes can be packed. Since the system requires extra time to prepare the data, send SYNCH signal, and send checksum, the actual support payload will be less than 24 bytes. That means, the ROV and the operator-side console should only send critical data. _good design demands good compromises_ Additionally, The ROV should send BCD data only; otherwise, the data segment may conflict with the SYNCH segment.
+However, this protocol also has some limitations. Firstly, the package cannot be too large. Due to the physical limitation, the faster the transmission rate, the worse the communication quality will be. To have a reliable transmission, the BAUD rate of the communication is set to 2400 BAUD. Dueto the limitation of the physical layer, only 20 bytes can be packed. That means, the ROV and the operator-side console should only send critical data. _good design demands good compromises_ Additionally, The ROV should send BCD data only; otherwise, the data segment may conflict with the SYNCH segment.
 
 
 ## Edge cases
