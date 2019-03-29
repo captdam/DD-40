@@ -40,9 +40,10 @@ Ceiling to the lowest standard BAUD, the BAUD used by this system is 2400 BAUD.
 
 The MCU on both operator-side and ROV comes with UART port. A typically TTL UART transmission is a single wire bus to connect a master (drive the wire) with several slaves (High-Z, listen to the wire). When the data on the line is 0, the master will drive the wire low (0V); otherwise, the master will drive the wire high (5V).
 
-![TTL UART & Differential signaling](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/TTL%20UART%20vs%20RS-485.jpg "TTL UART & Differential signaling")
+However, due to the length of the wire, strong noise could alternate the signal on the wire. When the master drives the wire high, applying a -5V noise could alternate the signal on the wire from 1 to 0; when the master drives the wire low, applying a +5V noise could alternate the signal on the wire from low to high.
 
-However, due to the length of the wire, strong noise could alternate the signal on the wire. As the graph (TTL UART) above, when the master drives the wire high, applying a -5V noise could alternate the signal on the wire from 1 to 0; when the master drives the wire low, applying a +5V noise could alternate the signal on the wire from low to high.
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/DiffSignaling.png/2560px-DiffSignaling.png" width="50%" alt="TTL UART & Differential signaling" />
+_Source: Wikipedia user upload image (by: Linear77, CC BY 3.0)_
 
 To deal with the noise issue, a differential signalling system is applied for the transmission. A differential signalling is a transmission method, that will send both the original signal and its negative signal. More specifically, when the transmitter sends X (1 or 0), the signal X will be placed on wire A, and the negative X will be placed on wire B. On the receiver side, by comparing the signal on wire A and B, the receiver could know the actual signal comes from the transmitter. Since the environment noise applies to both wire, the difference between the wires will not be alternated. 
 
@@ -81,17 +82,18 @@ There are two methods to design this system. One of them is using OpAmp, and the
 
 ![RS-485 using OpAmp](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/RS-485%20like%20OpAmp.JPG "RS-485 using OpAmp")
 
-Bad: Delay, size, require OP27 and OP37 (more kinds of parts)
+In this circuit, on the transmitter side, one OP27 is used for negative amplifier, and one OP37 is used for positive amplifier; on the receiver side, another OP27 is used for comparing the voltage on both wires.
 
+As the simulation result shows, this solution comes with about 5 microsecond delay.
 
 ### Method 2 - NMOS
 
 ![RS-485 using NMOS](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/RS-485%20like%20NMOS.JPG "RS-485 using NMOS")
 
-Bad: Power consumption
+Like the OpAmp method, the method uses an OP27 as the comparing circuit on the receiver side. However, on the transmitter side, a 2N7002 NMOS is used for negative amplifier; two 2N7002 NMOS are cascade to form a positive amplifier.
+
+As the simulation shows, the NMOS method has less delay than the OpAmp method (1.5 microsecond delay). Furthermore, the NMOS requires less components. However, for this method, there will always be one NMOS turns on, which means higher power consumption. By increasing the value of resistors, the power consumption could be reduced, but circuit delay may increase.
 
 ------
 
-According to the simulation result, the NMOS solution comes with less delay and lower cost.
-
-Notice: there is a 1V output offset. Using a diode to cut the offset.
+By comparing both methods, the NMOS design is choose for the communication circuit.
