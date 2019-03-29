@@ -102,16 +102,16 @@ As the result, the window of UART is limited, and packages need to be sent in a 
 ## Code description
 
 1 . Why should we choose assembly language instead of C?
-- On the 8051, resources are limited. Using assembly helps to control resource usage more precisely.
-- This MCU is a modified version of original Intel 8051. Although the MCU is compatible with the legacy C51 compiler, it cannot utilize all resources which are provided by the MCU, and it may utilize some resource exist on the legacy Intel 8051 but available on the MCU.
-- Some tricky could be applied in assembly language (e.g. frame buffer modification) only. 
-- Writing in assembly language provides a better control of the device (e.g. stack manipulation).
-- Higher performance.
+	- On the 8051, resources are limited. Using assembly helps to control resource usage more precisely.
+	- This MCU is a modified version of original Intel 8051. Although the MCU is compatible with the legacy C51 compiler, it cannot utilize all resources which are provided by the MCU, and it may utilize some resource exist on the legacy Intel 8051 but available on the MCU.
+	- Some tricky could be applied in assembly language (e.g. frame buffer modification) only. 
+	- Writing in assembly language provides a better control of the device (e.g. stack manipulation).
+	- Higher performance.
 2. Design philosophy： (MIPS 4 design principles)
-- _Simplicity favors regularity._
-- _Smaller is faster._
-- _Good design demands compromise._
-- _Making the common case fast._
+	- _Simplicity favors regularity._
+	- _Smaller is faster._
+	- _Good design demands compromise._
+	- _Making the common case fast._
 
 In this section, each lines of the code will be reviewed. Inline comments are given by the code.
 
