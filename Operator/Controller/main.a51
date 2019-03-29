@@ -137,31 +137,33 @@ MAIN:							;Main cycle: execute while receive synch signal
 	
 USING	0
 SCAN:							;Scan keyboard
-	MOV	KEY_SCAN, #11111111B
-	
-	MOV	KEY_DRIVE, #01111111B			;Scan row 7: LightL - LightC - LightR - Navi - X - XForward - Forward - Backward
+	MOV	KEY_DRIVE, #01111111B			;Scan row 7: X - X - X - X - X - XForward - Forward - Backward
+	NOP						;Notice: Some bits will be scand and saved (X bits), but those bits will not be processed by the ROV (Do not care).
 	NOP
-	MOV	FB_VALVE, KEY_SCAN
+	NOP
+	MOV	A, KEY_SCAN
 	CPL	A					;All keys are active low
-	MOV	FB_VALVE, A				;Get X - XForward - Forward - Backward
-	ANL	FB_VALVE, #00000111B
-	ANL	LED, #11110000B				;Get LightL - LightC - LightR - Navi
-	SWAP	A
-	MOV	LED, A
+	MOV	FB_VALVE, A
 	
-	MOV	KEY_DRIVE, #10111111B			;Scan row 6: Compass - PCompass - TurnLeft - TurnRight - X - X - ShiftLeft - ShiftRight
-	NOP						;Notice: Some bits will be scand and saved (for example: X, or TurnLeft when AP Compass actived), 
-	MOV	LR_VALVE, KEY_SCAN			;	but those bits will not be processed by the ROV (DNC bits), hence it id OK to send dirty byte.
-	CPL	A
-	MOV	LR_VALVE, A
-	
-	MOV	KEY_DRIVE, #11011111B			;Scan row 5: Pitch - PPitch - PitchUp - PitchDown - Press - PPress - Up - Down
+	MOV	KEY_DRIVE, #10111111B			;Scan row 6: ShiftLeft - ShiftRight - ShiftUp - ShiftDown - TurnLeft - TurnRight - PitchUp - PitchDown
 	NOP
-	MOV	A, KEY_SCAN				;MOV A, INPUT; CPL A; MOV RAM, A;	5 bytes + 3 cycles
-	CPL	A					;MOV RAM, INPUT; XRL RAM #0xFF;		6 bytes + 4 cycles
-	MOV	UD_VALVE, A
+	NOP
+	NOP
+	MOV	A, KEY_SCAN
+	CPL	A
+	MOV	DIR_VALVE, A
+	
+	MOV	KEY_DRIVE, #11011111B			;Scan row 5: AP - AP - AP - NaviLight - MainLight - X - X - X
+	NOP
+	NOP
+	NOP
+	MOV	A, KEY_SCAN
+	CPL	A
+	MOV	FUNC, A
 	
 	MOV	KEY_DRIVE, #11101111B			;Scan row 4: Custom output
+	NOP
+	NOP
 	NOP
 	MOV	A, KEY_SCAN
 	CPL	A
@@ -174,11 +176,48 @@ SCAN:							;Scan keyboard
 	JMP	SCAN_end
 	
 	SCAN_keyboard:
-	MOV	KEY_DRIVE, #11110111B			;Scan row 3: Digital input high/apply
+	MOV	KEY_DRIVE, #11110111B			;Scan row 3: Digital input low
+	MOV	A, KEY_SCAN
+	MOV	R7, #8
+	scan_3_loop:					;Scan all 8 keys on row 2
+	RLC	A					;Rotate to right, first bit is key_8
+	JC	scan_3_keyreleased			;key press = 0, key released = 1
+	CALL	DIGITAL_INPUT
+	JMP	SCAN_end				
+	scan_3_keyreleased:
+	DJNZ	R7, scan_3_loop				;R7 reaches 0 (8 to 1 has been scaned)
+	
+	MOV	KEY_DRIVE, #11111011B			;Scan row 2: Digital input high
 	NOP
 	
-	scan_3_pitch:					;User apply value from gitital input buffer to AutoPilot pitch control, check required
-	JB	KEY_SCAN.7, scan_3_compass
+	scan_2_compass:					;User apply value from gitital input buffer to AutoPilot compass control, check required
+	JB	KEY_SCAN.7, scan_2_pressure
+	MOV	A, DIGI_BUFFER_L			;Apply COMPASS_DEST low, assume it is correct
+	SWAP	A
+	MOV	COMPASS_DEST, A
+	MOV	A, DIGI_BUFFER_E			;Apply COMPASS_DEST high as well
+	SWAP	A
+	ORL	A, DIGI_BUFFER_H
+	MOV	COMPASS_DEST+1, A
+	ADD	A, #-0x36				;Is the number >= 360
+	JNC	SCAN_end				;35+(-36):NC; 36+(-36):C
+	MOV	COMPASS_DEST+1, #0x00			;COMPASS >= 360, invalid input! Correct to 00x
+	MOV	COMPASS_DEST, #0x00
+	JMP	SCAN_end
+	
+	scan_2_pressure:				;User apply value from gitital input buffer to AutoPilot pressure (depth) control, any depth is OK
+	JB	KEY_SCAN.6, scan_2_pitch
+	MOV	A, DIGI_BUFFER_E			;Apply PRESSURE_DEST high (xx.00m)
+	SWAP	A
+	ORL	A, DIGI_BUFFER_H
+	MOV	COMPASS_DEST+1, A
+	MOV	A, DIGI_BUFFER_L			;Apply PRESSURE_DEST high (00.xxm), leave 0.01s to be 0 (resolution 0.1m)
+	SWAP	A
+	MOV	COMPASS_DEST, A
+	JMP	SCAN_end
+	
+	scan_2_pitch:					;User apply value from gitital input buffer to AutoPilot pitch control, check required
+	JB	KEY_SCAN.5, scan_2_cpwm
 	MOV	A, DIGI_BUFFER_L			;Apply PITCH_DEST low, assume it is correct
 	SWAP	A
 	MOV	PITCH_DEST, A
@@ -196,92 +235,54 @@ SCAN:							;Scan keyboard
 	;	271, 272: valid: enable 270. <-- simpler code is better than complex code, "Good design demands good compromises"
 	MOV	PITCH_DEST+1, #0x00			;90 <= PITCH_DEST < 270, invalid input! Correct to 00x
 	MOV	PITCH_DEST, #0x00
-	JMP	SCAN_end				;Only one key at a time, ignor other keys (DNC)
+	JMP	SCAN_end				;Only one key at a time, ignor other keys (DNC)	
 	
-	scan_3_compass:					;User apply value from gitital input buffer to AutoPilot compass control, check required
-	JB	KEY_SCAN.6, scan_3_pressure
-	MOV	A, DIGI_BUFFER_L			;Apply COMPASS_DEST low, assume it is correct
-	SWAP	A
-	MOV	COMPASS_DEST, A
-	MOV	A, DIGI_BUFFER_E			;Apply COMPASS_DEST high as well
-	SWAP	A
-	ORL	A, DIGI_BUFFER_H
-	MOV	COMPASS_DEST+1, A
-	ADD	A, #-0x36				;Is the number >= 360
-	JNC	SCAN_end				;35+(-36):NC; 36+(-36):C
-	MOV	COMPASS_DEST+1, #0x00			;COMPASS >= 360, invalid input! Correct to 00x
-	MOV	COMPASS_DEST, #0x00
-	JMP	SCAN_end
-	
-	scan_3_pressure:				;User apply value from gitital input buffer to AutoPilot pressure (depth) control, any depth is OK
-	JB	KEY_SCAN.5, scan_3_cpwm
-	MOV	A, DIGI_BUFFER_E			;Apply PRESSURE_DEST high (xx.00m)
-	SWAP	A
-	ORL	A, DIGI_BUFFER_H
-	MOV	COMPASS_DEST+1, A
-	MOV	A, DIGI_BUFFER_L			;Apply PRESSURE_DEST high (00.xxm), leave 0.01s to be 0 (resolution 0.1m)
-	SWAP	A
-	MOV	COMPASS_DEST, A
-	JMP	SCAN_end	
-	
-	scan_3_cpwm:					;User apply value from gitital input buffer to custom PWM output control
-	JB	KEY_SCAN.4, scan_3_0
+	scan_2_cpwm:					;User apply value from gitital input buffer to custom PWM output control
+	JB	KEY_SCAN.4, scan_2_0
 	MOV	A, DIGI_BUFFER_E
-	JZ	scan_3_cpwm_read			;If buffer_EXH has value (100s is not 0), set PWM to 100
+	JZ	scan_2_cpwm_read			;If buffer_EXH has value (100s is not 0), set PWM to 100
 	MOV	C_PWM, #0xA0
 	JMP	SCAN_end
-	scan_3_cpwm_read:
+	scan_2_cpwm_read:
 	MOV	A, DIGI_BUFFER_H			;Get 10s to higher nibble
 	SWAP	A
 	ADD	A, DIGI_BUFFER_L			;Add 1s to lower nibble
 	MOV	C_PWM, A
 	JMP	SCAN_end
 	
-	scan_3_0:					;If this key is 0, it will make the scaning of row2 faster and code will be smaller (so I can use DJNZ)
-	JB	KEY_SCAN.1, scan_3_8
+	scan_2_0:					;If this key is 0, it will make the scaning of row2 faster and code will be smaller (so I can use DJNZ)
+	JB	KEY_SCAN.1, scan_2_9
 	MOV	R7, #0					
 	CALL	DIGITAL_INPUT
 	JMP	SCAN_end
-	scan_3_8:
-	JB	KEY_SCAN.0, scan_3_end
+	scan_2_9:
+	JB	KEY_SCAN.0, SCAN_end
 	MOV	R7, #9
 	CALL	DIGITAL_INPUT
 	JMP	SCAN_end
-	scan_3_end:
-	
-	MOV	KEY_DRIVE, #11111011B			;Scan row 2: Digital input low
-	MOV	R7, #8
-	MOV	A, KEY_SCAN
-	scan_2_loop:					;Scan all 8 keys on row 2
-	RRC	A					;Rotate to right, first bit is key_8
-	JNC	scan_2_keyreleased			;key press = 0, key released = 1
-	CALL	DIGITAL_INPUT
-	JMP	SCAN_end				
-	scan_2_keyreleased:
-	DJNZ	R7, scan_2_loop				;R7 reaches 0 (8 to 1 has been scaned)
 	
 	SCAN_end:
 	MOV	KEY_DRIVE, #11111111B			;Keyboard scan end
 	MOV	ENGINE_POWER, #0xA0			;Engine power is always 100%
 	
 	;	;Test
-	MOV	C_PWM, #0x35				;C_PWM = 035%
-	MOV	PITCH_DEST+1, #0x29			;PITCH_DEST = 296 (64 down)
-	MOV	PITCH_DEST, #0x60
-	MOV	COMPASS_DEST+1, #0x13			;COMPASS_DEST = 135
-	MOV	COMPASS_DEST, #0x50
-	MOV	PRESSURE_DEST+1, #0x24			;PRESSURE_DEST = 24.55m
-	MOV	PRESSURE_DEST, #0x55
-	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
-	MOV	DIGI_BUFFER_H, #0x02
-	MOV	DIGI_BUFFER_L, #0x03
+;	MOV	C_PWM, #0x35				;C_PWM = 035%
+;	MOV	PITCH_DEST+1, #0x29			;PITCH_DEST = 296 (64 down)
+;	MOV	PITCH_DEST, #0x60
+;	MOV	COMPASS_DEST+1, #0x13			;COMPASS_DEST = 135
+;	MOV	COMPASS_DEST, #0x50
+;	MOV	PRESSURE_DEST+1, #0x24			;PRESSURE_DEST = 24.55m
+;	MOV	PRESSURE_DEST, #0x55
+;	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
+;	MOV	DIGI_BUFFER_H, #0x02
+;	MOV	DIGI_BUFFER_L, #0x03
 	;End of test
 	
 USING	0
 PACK:							;App SFR --> Tx buffer
 	
 	MOV	A, FB_VALVE				;Send first word (not nessary to save it in buffer)
-	ORL	A, LED
+	ORL	A, FUNC
 	MOV	SBUF, A
 	MOV	R2, A					;Checksum
 	
@@ -295,15 +296,11 @@ PACK:							;App SFR --> Tx buffer
 		INC	R0
 	ENDM
 	
-	MOV	R1, #LR_VALVE				;Bit data. In order, using R addressing and INC R to fetch data
+	MOV	R1, #DIR_VALVE
 	MOV	A, @R1
 	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
 	
-	INC	R1
-	MOV	A, @R1
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	
-	INC	R1
+	MOV	R1, #C_OUT
 	MOV	A, @R1
 	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
 	
@@ -328,7 +325,8 @@ PACK:							;App SFR --> Tx buffer
 	MOV	A, C_PWM
 	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
 	
-	MOV	A, R2					;Checksum
+	CLR	A
+	SUBB	A, R2					;Checksum
 	MOVX	@R0, A
 	
 USING	0
@@ -412,15 +410,11 @@ CHECKSUM:
 	ADD	A, R2					;R2 <-- Accumulate result
 	MOV	R2, A
 	INC	R0					;Pointer inc
-	CJNE	R0, #LOW RX_BUFFER_END-1, checksum_loop
-	
-	MOVX	A, @R0
-	XCH	A, R2					;A <-- Data, R2 <-- checksum
-	SUBB	A, R2					;Data + checksum - checksum - checksum should be 0
+	CJNE	R0, #LOW RX_BUFFER_END, checksum_loop
 	
 	SETB	LED_COMERROR
 	SETB	LED_IDEL
-	JNZ	$					;Checksum error, stall here
+	JNZ	$					;E_Data + checksum should be 0. If checksum error, stall here
 	CLR	LED_COMERROR
 	CLR	LED_IDEL
 

@@ -11,48 +11,18 @@ __M_LCD_INI		MACRO	CMD			;Write instruction to both LCDs
 
 __M_LCD_PREPARE		MACRO
 	__M_LCD_INI #0x38				;8-bit interface, 2-line, 5*8 font
-	__M_WAIT5000
+	CALL	WAIT5000
 	__M_LCD_INI #0x38
-	__M_WAIT100
+	CALL	WAIT100
 	__M_LCD_INI #0x08				;Cursor display off
-	__M_WAIT100
+	CALL	WAIT100
 	__M_LCD_INI #0x01				;Clear display
-	__M_WAIT5000
+	CALL	WAIT5000
 	__M_LCD_INI #0x06				;Cursor auto-inc (left-to-right write)
-	__M_WAIT100
+	CALL	WAIT100
 	__M_LCD_INI #0x0C				;Turn on display
-	__M_WAIT100
+	CALL	WAIT100
 	ENDM
-
-;LCD0_SETCURSOR:
-;	CLR	LCD_RS
-;	SETB	LCD_E0
-;	ORL	A, #0x80				;DB7 = 1, DB6-0 = Address
-;	MOV	LCD_DATA, A
-;	CLR	LCD_E0
-;	RET
-
-;LCD1_SETCURSOR:
-;	CLR	LCD_RS
-;	SETB	LCD_E1
-;	ORL	A, #0x80				;DB7 = 1, DB6-0 = Address
-;	MOV	LCD_DATA, A
-;	CLR	LCD_E1
-;	RET
-
-;LCD0_SETDATA:
-;	SETB	LCD_RS
-;	SETB	LCD_E0
-;	MOV	LCD_DATA, A
-;	CLR	LCD_E0
-;	RET
-
-;LCD1_SETDATA:
-;	SETB	LCD_RS
-;	SETB	LCD_E1
-;	MOV	LCD_DATA, A
-;	CLR	LCD_E1
-;	RET
 
 
 __M_LCD_WRITEBUFFER	MACRO	LCD, LINE, INDEX
