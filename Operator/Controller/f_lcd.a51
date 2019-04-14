@@ -26,7 +26,7 @@ __M_LCD_PREPARE		MACRO
 
 
 __M_LCD_WRITEBUFFER	MACRO	LCD, LINE, INDEX
-	MOV	R0,	#(LCD*(LCD1_LINE0-LCD0_LINE0)+LINE*(LCD0_LINE1-LCD0_LINE0)+INDEX)+LCD_BUFFER
+	MOV	R0,	#(LCD*0x20+LINE*0x10+INDEX)+LCD_BUFFER
 	MOVX	@R0, A
 	ENDM
 
@@ -35,14 +35,32 @@ __M_LCD_APPENDBUFFER	MACRO
 	MOVX	@R0, A
 	ENDM
 
-
-__M_HIGH2ASCII		MACRO
+BCD2ASCII:
+	; Input: A(InputBCD)
+	; Output: A(High), B(Low) - To convenient the LCD buffer, A will hold high value and B will hold low value here
+	; Modify: A, B
+	MOV	B, A
+	ANL	A, #0x0F
+	ORL	A, #0x30
+	XCH	A, B
 	ANL	A, #0xF0
 	SWAP	A
 	ORL	A, #0x30
-	ENDM
+	RET
 
-__M_LOW2ASCII		MACRO
+BCDHIGH2ASCII:
+	; Input: A(InputBCD)
+	; Output: A(High)
+	; Modify: A
+	ANL	A, #0xF0
+	SWAP	A
+	ORL	A, #0x30
+	RET
+
+BCDLOW2ASCII:
+	; Input: A(InputBCD)
+	; Output: A(High)
+	; Modify: A
 	ANL	A, #0x0F
 	ORL	A, #0x30
-	ENDM
+	RET

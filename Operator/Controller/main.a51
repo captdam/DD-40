@@ -37,9 +37,26 @@ $INCLUDE	(f_lcd.a51)
 
 USING	0
 DIGITAL_INPUT:						;User enter a digital to AutoPilot console
+	; Input: R7(ToBeAppend)
+	; Output: None - Directly write to RAM
+	; Modify: DIGI_BUFFER_X
 	MOV	DIGI_BUFFER_E, DIGI_BUFFER_H		;Data shift left, Data Low = input
 	MOV	DIGI_BUFFER_H, DIGI_BUFFER_L
 	MOV	DIGI_BUFFER_L, R7			;Input is guaranted to be from 0x00-0x09
+	RET
+
+DIGITAL_GETPWM:
+	; Input: None - Directly fetch from RAM
+	; Output: A(PWM%InBCD,0xA0For100%)
+	; Modify: A
+	MOV	A, DIGI_BUFFER_E
+	JZ	DIGITAL_GETPWM_read			;If buffer_EXH has value (100s is not 0), set PWM to 100
+	MOV	A, #0xA0
+	RET
+	DIGITAL_GETPWM_read:
+	MOV	A, DIGI_BUFFER_H			;Get 10s to higher nibble
+	SWAP	A
+	ORL	A, DIGI_BUFFER_L			;Add 1s to lower nibble
 	RET
 	
 ; MAIN CODE --------------------------------------------
@@ -49,65 +66,16 @@ INI:							;Boot setup
 	MOV	SP, #0x7F
 	
 	CLR	LCD_RW					;Set LCD to Write mode
-	
 	__M_LCD_PREPARE					;LCD ini
 	
-	MOV	A, #'P'					;LCD constant display character
-	__M_LCD_WRITEBUFFER	0,0,3
-	MOV	A, #' '
-	__M_LCD_APPENDBUFFER				;LCD0:	0123456789ABCDEF
-	MOV	A, #'N'					;	xxxP xxxN xx.xxm
-	__M_LCD_WRITEBUFFER	0,0,8			;	PWMxxx%     >xxx
-	MOV	A, #' '
-	__M_LCD_APPENDBUFFER
-	MOV	A, #'.'
-	__M_LCD_WRITEBUFFER	0,0,12
-	MOV	A, #'m'
-	__M_LCD_WRITEBUFFER	0,0,15
-	
-	MOV	A, #'P'
-	__M_LCD_WRITEBUFFER	0,1,0
-	MOV	A, #'W'
-	__M_LCD_APPENDBUFFER
-	MOV	A, #'M'
-	__M_LCD_APPENDBUFFER
-	MOV	A, #'%'
-	__M_LCD_WRITEBUFFER	0,1,6
-	MOV	A, #' '
-	__M_LCD_APPENDBUFFER
-	__M_LCD_APPENDBUFFER
-	__M_LCD_APPENDBUFFER
-	__M_LCD_APPENDBUFFER
-	__M_LCD_APPENDBUFFER
-	MOV	A, #0x7E ;0x7e is --> mark
-	__M_LCD_WRITEBUFFER	0,1,12
-	
-	MOV	A, #'.'					;LCD1:	0123456789ABCDEF
-	__M_LCD_WRITEBUFFER	1,0,2			;	xx.xV +xx.xxC xx
-	MOV	A, #'V'					;	xxxP xxxN xx.xxm
-	__M_LCD_WRITEBUFFER	1,0,4
-	MOV	A, #' '
-	__M_LCD_APPENDBUFFER
-	MOV	A, #'.'
-	__M_LCD_WRITEBUFFER	1,0,9
-	MOV	A, #'C'
-	__M_LCD_WRITEBUFFER	1,0,11
-	MOV	A, #' '
-	__M_LCD_APPENDBUFFER
-	__M_LCD_APPENDBUFFER
-	
-	MOV	A, #'P'
-	__M_LCD_WRITEBUFFER	1,1,3
-	MOV	A, #' '
-	__M_LCD_APPENDBUFFER
-	MOV	A, #'N'
-	__M_LCD_WRITEBUFFER	1,1,8
-	MOV	A, #' '
-	__M_LCD_APPENDBUFFER
-	MOV	A, #'.'
-	__M_LCD_WRITEBUFFER	1,1,12
-	MOV	A, #'m'
-	__M_LCD_WRITEBUFFER	1,1,15
+	MOV	DPTR, #LCDTEMPLATE			;Write LCD data to buffer
+	MOV	R0, #LCD_BUFFER
+	INI_lcd:
+	MOVC	A, @A+DPTR				;Copy from code segment
+	MOVX	@R0, A					;Write to XRAM
+	INC	DPTR
+	INC	R0
+	CJNE	R0, #0x40+LCD_BUFFER, INI_lcd
 	
 	MOV	SCON, #0x50				;UART mode1 (8-bit, flex baud), enable read
 	SETB	ES
@@ -118,11 +86,11 @@ INI:							;Boot setup
 	SETB	TR0
 	SETB	ET0
 	
-	MOV	R20, #LCD_BUFFER			;Reset LCD buffer pointer, both LCO shares same pointer
-	MOV	R30, #TX_BUFFER_BEGIN			;Reset Tx/Rx buffer pointer (flush buffers)
-	MOV	R31, #RX_BUFFER_BEGIN
+	MOV	AR_20, #LCD_BUFFER			;Reset LCD buffer pointer, both LCDs share same pointer
+	MOV	AR_30, #TX_BUFFER			;Reset Tx/Rx buffer pointer (flush buffers)
+	MOV	AR_31, #RX_BUFFER
 	
-	MOV	SCAN_DIVIDER, #0x00			;Slow down keyboard (digital input) scan speed, switch scan = 4Hz, keyboard scan = 1Hz (human speed)
+	MOV	SCAN_DIVIDER, #0x00			;Slow down keyboard (digital input) scan speed
 	
 	SETB	EA
 
@@ -138,16 +106,13 @@ MAIN:							;Main cycle: execute while receive synch signal
 USING	0
 SCAN:							;Scan keyboard
 	MOV	KEY_DRIVE, #01111111B			;Scan row 7: X - X - X - X - X - XForward - Forward - Backward
-	NOP						;Notice: Some bits will be scand and saved (X bits), but those bits will not be processed by the ROV (Do not care).
-	NOP
 	NOP
 	MOV	A, KEY_SCAN
 	CPL	A					;All keys are active low
+	ANL	A, #00000111B
 	MOV	FB_VALVE, A
 	
 	MOV	KEY_DRIVE, #10111111B			;Scan row 6: ShiftLeft - ShiftRight - ShiftUp - ShiftDown - TurnLeft - TurnRight - PitchUp - PitchDown
-	NOP
-	NOP
 	NOP
 	MOV	A, KEY_SCAN
 	CPL	A
@@ -155,15 +120,12 @@ SCAN:							;Scan keyboard
 	
 	MOV	KEY_DRIVE, #11011111B			;Scan row 5: AP - AP - AP - NaviLight - MainLight - X - X - X
 	NOP
-	NOP
-	NOP
 	MOV	A, KEY_SCAN
 	CPL	A
+	ANL	A, #11111000B
 	MOV	FUNC, A
 	
 	MOV	KEY_DRIVE, #11101111B			;Scan row 4: Custom output
-	NOP
-	NOP
 	NOP
 	MOV	A, KEY_SCAN
 	CPL	A
@@ -210,10 +172,10 @@ SCAN:							;Scan keyboard
 	MOV	A, DIGI_BUFFER_E			;Apply PRESSURE_DEST high (xx.00m)
 	SWAP	A
 	ORL	A, DIGI_BUFFER_H
-	MOV	COMPASS_DEST+1, A
+	MOV	PRESSURE_DEST+1, A
 	MOV	A, DIGI_BUFFER_L			;Apply PRESSURE_DEST high (00.xxm), leave 0.01s to be 0 (resolution 0.1m)
 	SWAP	A
-	MOV	COMPASS_DEST, A
+	MOV	PRESSURE_DEST, A
 	JMP	SCAN_end
 	
 	scan_2_pitch:					;User apply value from gitital input buffer to AutoPilot pitch control, check required
@@ -235,19 +197,18 @@ SCAN:							;Scan keyboard
 	;	271, 272: valid: enable 270. <-- simpler code is better than complex code, "Good design demands good compromises"
 	MOV	PITCH_DEST+1, #0x00			;90 <= PITCH_DEST < 270, invalid input! Correct to 00x
 	MOV	PITCH_DEST, #0x00
-	JMP	SCAN_end				;Only one key at a time, ignor other keys (DNC)	
+	JMP	SCAN_end				;Only one key at a time, ignor other keys (DNC)
 	
 	scan_2_cpwm:					;User apply value from gitital input buffer to custom PWM output control
-	JB	KEY_SCAN.4, scan_2_0
-	MOV	A, DIGI_BUFFER_E
-	JZ	scan_2_cpwm_read			;If buffer_EXH has value (100s is not 0), set PWM to 100
-	MOV	C_PWM, #0xA0
-	JMP	SCAN_end
-	scan_2_cpwm_read:
-	MOV	A, DIGI_BUFFER_H			;Get 10s to higher nibble
-	SWAP	A
-	ADD	A, DIGI_BUFFER_L			;Add 1s to lower nibble
+	JB	KEY_SCAN.4, scan_2_engine
+	CALL	DIGITAL_GETPWM
 	MOV	C_PWM, A
+	JMP	SCAN_end
+	
+	scan_2_engine:					;User apply value from gitital input buffer to engine power control
+	JB	KEY_SCAN.3, scan_2_0
+	CALL	DIGITAL_GETPWM
+	MOV	ENGINE_POWER, A
 	JMP	SCAN_end
 	
 	scan_2_0:					;If this key is 0, it will make the scaning of row2 faster and code will be smaller (so I can use DJNZ)
@@ -279,51 +240,25 @@ SCAN:							;Scan keyboard
 	;End of test
 	
 USING	0
-PACK:							;App SFR --> Tx buffer
+PACK:							;App SFR --> Tx buffer, and send
 	
 	MOV	A, FB_VALVE				;Send first word (not nessary to save it in buffer)
 	ORL	A, FUNC
 	MOV	SBUF, A
 	MOV	R2, A					;Checksum
 	
-	MOV	R30, #TX_BUFFER_BEGIN+1			;Buffer pointer set to second word (buffer --> UART)
-	MOV	R0, #TX_BUFFER_BEGIN+1			;(App SFR --> buffer) XRAM address < 0x0100, hence R0 is OK
+	MOV	AR_30, #TX_BUFFER+1			;Buffer pointer set to second word (buffer --> UART)
+	MOV	R0, #TX_BUFFER+1			;(App SFR --> buffer) XRAM address < 0x0100, hence R0 is OK
+	MOV	R1, #FB_VALVE+1
 	
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM	MACRO
-		MOVX	@R0, A
-		ADD	A, R2
-		MOV	R2, A
-		INC	R0
-	ENDM
-	
-	MOV	R1, #DIR_VALVE
-	MOV	A, @R1
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	
-	MOV	R1, #C_OUT
-	MOV	A, @R1
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	
-	MOV	A, ENGINE_POWER				;Numeric data. Not in order, have to use direct addressing
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	
-	MOV	A, PRESSURE_DEST
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	MOV	A, PRESSURE_DEST+1
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	
-	MOV	A, PITCH_DEST
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	MOV	A, PITCH_DEST+1
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	
-	MOV	A, COMPASS_DEST
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	MOV	A, COMPASS_DEST+1
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
-	
-	MOV	A, C_PWM
-	__M_PACK_WRITEBUFFER_AND_GETCHECKSUM
+	PACK_loop:
+	MOV	A, @R1					;Get data from App SFR
+	MOVX	@R0, A					;Save it to Tx buffer
+	ADD	A, R2					;Accumulately adding R2
+	MOV	R2, A
+	INC	R0					;Pointer++
+	INC	R1
+	CJNE	R1, #TX_CHECKSUM, PACK_loop		;Loop for 14 times (1 already send, 14 not send, 1 checksum (not need), total 16)
 	
 	CLR	A
 	SUBB	A, R2					;Checksum
@@ -331,86 +266,104 @@ PACK:							;App SFR --> Tx buffer
 	
 USING	0
 COMMAND_UI:						;Update command data to LCD0 buffer
-	MOV	A, PITCH_DEST+1				;PITCH_DEST 100
-	__M_HIGH2ASCII
+	MOV	A, PITCH_DEST+1				;PITCH_DEST 100s and 10s
+	CALL	BCD2ASCII
 	__M_LCD_WRITEBUFFER	0,0,0
-	MOV	A, PITCH_DEST+1				;PITCH_DEST 10
-	__M_LOW2ASCII
-	__M_LCD_APPENDBUFFER
-	MOV	A, PITCH_DEST				;PITCH_DEST 1
-	__M_HIGH2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
 	
-	MOV	A, COMPASS_DEST+1			;COMPASS_DEST 100
-	__M_HIGH2ASCII
+	MOV	A, PITCH_DEST				;PITCH_DEST 1s
+	CALL	BCDHIGH2ASCII
+	__M_LCD_APPENDBUFFER
+	
+	MOV	A, COMPASS_DEST+1			;COMPASS_DEST 100s and 10s
+	CALL	BCD2ASCII
 	__M_LCD_WRITEBUFFER	0,0,5
-	MOV	A, COMPASS_DEST+1			;COMPASS_DEST 10
-	__M_LOW2ASCII
-	__M_LCD_APPENDBUFFER
-	MOV	A, COMPASS_DEST				;COMPASS_DEST 1
-	__M_HIGH2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
 	
-	MOV	A, PRESSURE_DEST+1			;PRESSURE_DEST 10
-	__M_HIGH2ASCII
-	__M_LCD_WRITEBUFFER	0,0,10
-	MOV	A, PRESSURE_DEST+1			;PRESSURE_DEST 1
-	__M_LOW2ASCII
+	MOV	A, COMPASS_DEST				;COMPASS_DEST 1s
+	CALL	BCDHIGH2ASCII
 	__M_LCD_APPENDBUFFER
-	MOV	A, PRESSURE_DEST			;PRESSURE_DEST 0.1
-	__M_HIGH2ASCII
+	
+	MOV	A, PRESSURE_DEST+1			;PRESSURE_DEST 10s and 1s
+	CALL	BCD2ASCII
+	__M_LCD_WRITEBUFFER	0,0,10
+	MOV	A, B
+	__M_LCD_APPENDBUFFER
+	
+	MOV	A, PRESSURE_DEST			;PRESSURE_DEST 0.1s and 0.01s
+	CALL	BCD2ASCII
 	__M_LCD_WRITEBUFFER	0,0,13
-	MOV	A, PRESSURE_DEST			;PRESSURE_DEST 0.01
-	__M_LOW2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
 	
 	MOV	A, C_PWM				;C_PWM = 100? 0xA0 (BCD100)
-	CJNE	A, #0xA0, command_ui_pwm
+	CJNE	A, #0xA0, COMMAND_UI_pwm
 	MOV	A, #'1'					;C_PWM = 100
-	__M_LCD_WRITEBUFFER	0,1,3
+	__M_LCD_WRITEBUFFER	0,1,1
 	MOV	A, #'0'
 	__M_LCD_APPENDBUFFER
 	__M_LCD_APPENDBUFFER
+	JMP	COMMAND_UI_pwm_end
 	
-	command_ui_pwm:
-	MOV	A, #'0'					;C_PWM 100
-	__M_LCD_WRITEBUFFER	0,1,3
-	MOV	A, C_PWM				;C_PWM 10
-	__M_HIGH2ASCII
+	COMMAND_UI_pwm:
+	MOV	A, #'0'					;C_PWM 100s
+	__M_LCD_WRITEBUFFER	0,1,1
+	MOV	A, C_PWM				;C_PWM 10s and 1s
+	CALL	BCD2ASCII
 	__M_LCD_APPENDBUFFER
-	MOV	A, C_PWM				;C_PWM 1
-	__M_LOW2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
-	command_ui_pwm_end:
+	COMMAND_UI_pwm_end:
+	
+	MOV	A, ENGINE_POWER				;C_PWM = 100? 0xA0 (BCD100)
+	CJNE	A, #0xA0, COMMAND_UI_engine
+	MOV	A, #'1'					;C_PWM = 100
+	__M_LCD_WRITEBUFFER	0,1,7
+	MOV	A, #'0'
+	__M_LCD_APPENDBUFFER
+	__M_LCD_APPENDBUFFER
+	JMP	COMMAND_UI_engine_end
+	
+	COMMAND_UI_engine:
+	MOV	A, #'0'					;C_PWM 100s
+	__M_LCD_WRITEBUFFER	0,1,7
+	MOV	A, ENGINE_POWER				;C_PWM 10s and 1s
+	CALL	BCD2ASCII
+	__M_LCD_APPENDBUFFER
+	MOV	A, B
+	__M_LCD_APPENDBUFFER
+	COMMAND_UI_engine_end:
 	
 	MOV	A, DIGI_BUFFER_E			;Digital input EXH (100)
-	__M_LOW2ASCII
+	CALL	BCDLOW2ASCII
 	__M_LCD_WRITEBUFFER	0,1,13
 	MOV	A, DIGI_BUFFER_H			;Digital input High (10)
-	__M_LOW2ASCII
+	CALL	BCDLOW2ASCII
 	__M_LCD_APPENDBUFFER
 	MOV	A, DIGI_BUFFER_L			;Digital input Low (1)
-	__M_LOW2ASCII
+	CALL	BCDLOW2ASCII
 	__M_LCD_APPENDBUFFER
 	
 USING	0
 WAITPACKAGE:
 	SETB	LED_IDEL
-	MOV	A, #RX_BUFFER_END
-	CJNE	A, R31, $				;Wait until package fully received (Notice: R31(Rx buffer pointer) is a real-time value)
+	CLR	A					;Rx_Buffer located in 0xF0 - 0xFF, when all data received (16 word: 15 data + 1 checksum), buffer pointer should be 0 (overflow)
+	CJNE	A, AR_31, $				;Wait until package fully received (Notice: R31(Rx buffer pointer) is a real-time value)
 	CLR	LED_IDEL
 	
 USING	0
 CHECKSUM:
 	MOV	R2, #0					;Clear R2, prepare to calculate checksum
 	
-	MOV	R0, #RX_BUFFER_BEGIN			;Go through all data in the rx buffer
+	MOV	R0, #RX_BUFFER				;Go through all data in the rx buffer
 	checksum_loop:
 	MOVX	A, @R0					;Accumulately adding to get checksum
-	ADD	A, R2					;R2 <-- Accumulate result
+	ADD	A, R2
 	MOV	R2, A
-	INC	R0					;Pointer inc
-	CJNE	R0, #LOW RX_BUFFER_END, checksum_loop
+	INC	R0					;Pointer++
+	CLR	A
 	
 	SETB	LED_COMERROR
 	SETB	LED_IDEL
@@ -420,33 +373,26 @@ CHECKSUM:
 
 USING	0
 UNPACK:							;Rx buffer --> App SFR
-	MOV	R0, #RX_BUFFER_BEGIN
+	MOV	R0, #RX_BUFFER
+	MOV	R1, #PRESSURE_REAL
 	
-	__M_UNPACKPACK	MACRO	APPSFR
-		MOVX	A, @R0
-		MOV	APPSFR, A
-		INC	R0
-		MOVX	A, @R0
-		MOV	APPSFR+1, A
-		INC	R0
-	ENDM
-
-	__M_UNPACKPACK PRESSURE_REAL
-	__M_UNPACKPACK PITCH_REAL
-	__M_UNPACKPACK COMPASS_REAL
-	__M_UNPACKPACK TEMPERATURE
-	__M_UNPACKPACK BAT_VOLTAGE
+	UNPACK_loop:
+	MOVX	A, @R0
+	MOV	@R1, A
+	INC	R0
+	INC	R1
+	CJNE	R1, #RX_CHECKSUM, UNPACK_loop		;Loop for 15 times (15 data, 1 checksum (not need), total 16)
 
 USING	0
 DATAUI:							;Update ROV data to LCD1 buffer
-	MOV	A, BAT_VOLTAGE+1			;BAT_VOLTAGE 10
-	__M_HIGH2ASCII
+	MOV	A, BAT_VOLTAGE+1			;BAT_VOLTAGE 10s and 1s
+	CALL	BCD2ASCII
 	__M_LCD_WRITEBUFFER	1,0,0
-	MOV	A, BAT_VOLTAGE+1			;BAT_VOLTAGE 1
-	__M_LOW2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
-	MOV	A, BAT_VOLTAGE				;BAT_VOLTAGE 0.1
-	__M_HIGH2ASCII
+	
+	MOV	A, BAT_VOLTAGE				;BAT_VOLTAGE 0.1s
+	CALL	BCDHIGH2ASCII
 	__M_LCD_WRITEBUFFER	1,0,3
 	
 	MOV	A, TEMPERATURE+1			;TEMPERATURE sign (ASCII)
@@ -454,57 +400,58 @@ DATAUI:							;Update ROV data to LCD1 buffer
 	SWAP	A
 	ORL	A, #0x20
 	__M_LCD_WRITEBUFFER	1,0,6
-	MOV	A, TEMPERATURE+1			;TEMPERATURE 10
-	__M_LOW2ASCII
+	
+	MOV	A, TEMPERATURE+1			;TEMPERATURE 10s
+	CALL	BCDLOW2ASCII
 	__M_LCD_APPENDBUFFER
-	MOV	A, TEMPERATURE				;TEMPERATURE 1
-	__M_HIGH2ASCII
+	
+	MOV	A, TEMPERATURE				;TEMPERATURE 1s and 0.1s
+	CALL	BCD2ASCII
 	__M_LCD_APPENDBUFFER
-	MOV	A, TEMPERATURE				;TEMPERATURE 0.1
-	__M_LOW2ASCII
+	MOV	A, B
 	__M_LCD_WRITEBUFFER	1,0,10
 	
-	MOV	A, BAT_VOLTAGE				;C_IN 1
+	MOV	A, C_IN					;C_IN 1
 	ANL	A, #00000010B
 	RR	A
 	ORL	A, #0xFE				;If high, print 0xFF (black block); otherwise, print 0xFE (space)
 	__M_LCD_WRITEBUFFER	1,0,14
-	MOV	A, BAT_VOLTAGE				;C_IN 0
+	
+	MOV	A, C_IN					;C_IN 0
 	ANL	A, #00000001B
 	ORL	A, #0xFE
 	__M_LCD_APPENDBUFFER
 	
-	MOV	A, PITCH_REAL+1				;PITCH_REAL 100
-	__M_HIGH2ASCII
+	MOV	A, PITCH_REAL+1				;PITCH_REAL 100s and 10s
+	CALL	BCD2ASCII
 	__M_LCD_WRITEBUFFER	1,1,0
-	MOV	A, PITCH_REAL+1				;PITCH_REAL 10
-	__M_LOW2ASCII
-	__M_LCD_APPENDBUFFER
-	MOV	A, PITCH_REAL				;PITCH_REAL 1
-	__M_HIGH2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
 	
-	MOV	A, COMPASS_REAL+1			;COMPASS_REAL 100
-	__M_HIGH2ASCII
+	MOV	A, PITCH_REAL				;PITCH_REAL 1s
+	CALL	BCDHIGH2ASCII
+	__M_LCD_APPENDBUFFER
+	
+	MOV	A, COMPASS_REAL+1			;COMPASS_REAL 100s and 10s
+	CALL	BCD2ASCII
 	__M_LCD_WRITEBUFFER	1,1,5
-	MOV	A, COMPASS_REAL+1			;COMPASS_REAL 10
-	__M_LOW2ASCII
-	__M_LCD_APPENDBUFFER
-	MOV	A, COMPASS_REAL				;COMPASS_REAL 1
-	__M_HIGH2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
 	
-	MOV	A, PRESSURE_REAL+1			;PRESSURE_REAL 10
-	__M_HIGH2ASCII
-	__M_LCD_WRITEBUFFER	1,1,10
-	MOV	A, PRESSURE_REAL+1			;PRESSURE_REAL 1
-	__M_LOW2ASCII
+	MOV	A, COMPASS_REAL				;COMPASS_REAL 1s
+	CALL	BCDHIGH2ASCII
 	__M_LCD_APPENDBUFFER
-	MOV	A, PRESSURE_REAL			;PRESSURE_REAL 0.1
-	__M_HIGH2ASCII
+	
+	MOV	A, PRESSURE_REAL+1			;PRESSURE_REAL 10s and 1s
+	CALL	BCD2ASCII
+	__M_LCD_WRITEBUFFER	1,1,10
+	MOV	A, B
+	__M_LCD_APPENDBUFFER
+	
+	MOV	A, PRESSURE_REAL			;PRESSURE_REAL 0.1s and 0.01s
+	CALL	BCD2ASCII
 	__M_LCD_WRITEBUFFER	1,1,13
-	MOV	A, PRESSURE_REAL			;PRESSURE_REAL 0.01
-	__M_LOW2ASCII
+	MOV	A, B
 	__M_LCD_APPENDBUFFER
 	
 USING	0
@@ -513,7 +460,7 @@ CYCLE_END:
 	JMP	WAIT
 	
 
-; INTERRUPT SUBROUTINE ---------------------------------
+; INTERRUPT SERVICE ROUTINE ---------------------------------
 USING	0
 INT_0:
 	RETI
@@ -527,47 +474,49 @@ TIMER_0:						;Update LCD, R0 = LCD pointer
 	SETB	RS1
 	CLR	RS0
 	
-	MOV	TH0, #0xF4				;Sample from ROV every 250000us, LCD sample from sample every 125000us
+	MOV	TH0, #0xF4				;Sample from ROV every 250000us, LCD samples from sample every 125000us
 	MOV	TL0, #0x48				;(16+1)*2 LCD = 34chars --> Update LCD every 3000us (-3000 = 0xF448)
 	
-	timer_0_checkline0end:
-	CJNE	R0, #LCD0_LINE0+LCD_LINELENGTH, timer_0_checkline1end	;Pointer points to 0x10 (line0 end)
-	MOV	R0, #LCD0_LINE1				;Pointer --> next line
-	CLR	LCD_RS
+	MOV	A, R0					;Check LCD line end
+	ANL	A, #0xF0				;Only look high part, which indecates the line number of the LCD data (LCD has 16 charcaters in one line)
+	SUBB	A, R7					;Compare with line number from last time
+	JZ	TIMER_0_sendchar			;If same, send data char; otherwise, send line number
+	
+	TIMER_0_sendline:
+	MOV	A, R0					;Update last line number
+	ANL	A, #0xF0
+	MOV	R7, A
+	
+	CLR	LCD_RS					;Send command to both LCDs
 	SETB	LCD_E0
 	SETB	LCD_E1
-	MOV	LCD_DATA, #0x80|0x40			;LCD command: go to line1
+	RL	A					;ACC holds the current high 4 bits of the pointer to the LCD data (0x00 or 0x10)
+	RL	A					;If A = 0x00: Send 0x80(10000000) (Set line 0); If A = 0x10: Send 0xC0(11000000) (Set line 1)
+	ORL	A, #0x80
+	MOV	LCD_DATA, A
 	CLR	LCD_E0
 	CLR	LCD_E1
+	
 	JMP	TIMER_0_end
 	
-	timer_0_checkline1end:
-	CJNE	R0, #LCD0_LINE1+LCD_LINELENGTH, timer_0_sendchar	;Pointer points to 0x30 (line1 end)
-	MOV	R0, #LCD0_LINE0				;Pointer --> next line (go back to line0)
-	CLR	LCD_RS
-	SETB	LCD_E0
-	SETB	LCD_E1
-	MOV	LCD_DATA, #0x80|0x00			;LCD command: go to line0
-	CLR	LCD_E0
-	CLR	LCD_E1
-	JMP	TIMER_0_end
-	
-	timer_0_sendchar:
-	SETB	LCD_RS
+	TIMER_0_sendchar:
+	SETB	LCD_RS					;Set LCD mode = data
 	
 	MOVX	A, @R0					;Get data of LCD0
 	SETB	LCD_E0
 	MOV	LCD_DATA, A
 	CLR	LCD_E0
 	
-	MOV	A, #LCD1_LINE0-LCD0_LINE0		;Get date of LCD1
+	MOV	A, #0x20				;Get date of LCD1
 	ADD	A, R0
 	MOV	R1, A
 	MOVX	A, @R1
 	SETB	LCD_E1
 	MOV	LCD_DATA, A
 	CLR	LCD_E1
-	INC	R0					;Pointer+
+	
+	INC	R0					;LCD data pointer ++
+	ANL	AR0, #00011111B				;LCD data pointer mask (region 0x00-0x1F)
 	
 	TIMER_0_end:
 	POP	PSW
@@ -595,7 +544,7 @@ UART:							;Tx/Rx interrupt, R0 = Tx pointer, R1 = Rx pointer
 	JMP	UART_end
 	
 UART_txc:
-	CJNE	R0, #TX_BUFFER_END, uart_txc_send	;Is package fully send?
+	CJNE	R0, #TX_BUFFER+16, uart_txc_send	;Is package fully send?
 	JMP	UART_end
 	
 	uart_txc_send:
@@ -603,8 +552,9 @@ UART_txc:
 	MOV	SBUF, A
 	INC	R0					;Pointer inc
 	
-	;Notice: Tx can only be active by main procee once after SYNCH signal fired, and the SYNCH signal will first reset the write pointer;
-	;	hence, it is impossible to have the Tx buffer overflow
+	;Notice: Tx can only be triggered by main routine when SYNCH signal fired, and the SYNCH signal will first reset the write pointer;
+	;	hence, it is impossible to have the Tx buffer overflow.
+	;	Even if the Tx overflow and sending some random data to the ROV, the ROV will ignor them.
 	
 	JMP	UART_end
 	
@@ -614,24 +564,24 @@ UART_rxc:
 	
 	uart_rxc_sync:
 	MOV	A, SP					;Write return PC to MAIN
-	SUBB	A, #3					;Stack = (H) >PSW<, ACC, PC_H, PC_L (L)
+	SUBB	A, #3					;Stack = (H) PSW(Current pointer), ACC, PC_H, PC_L (L)
 	MOV	R0, A
 	MOV	@R0, #LOW MAIN
 	INC	R0
 	MOV	@R0, #HIGH MAIN
 	
-	MOV	R0, #TX_BUFFER_BEGIN			;Reset Tx/Rx buffer pointer (flush buffers)
-	MOV	R1, #RX_BUFFER_BEGIN
+	MOV	R0, #TX_BUFFER				;Reset Tx/Rx buffer pointer (flush buffers)
+	MOV	R1, #RX_BUFFER
 	
 	JMP	UART_end				;Exit
 	
 	uart_rxc_data:
-	MOVX	@R1, A					;Save the word in buffer
-	INC	R1					;Pointer inc
-	
 	MOV	A, R1					;Rollback pointer if overflow
-	JNZ	UART_end
-	DEC	R1
+	JNZ	UART_end				;Rx buffer is located in XRAM 0xF0 to 0xFF. If Rx pointer becomes 0x00, it means the Rx buffer overflowed
+	DEC	R1					;In this case, the last word in the buffer will be overwrite
+	
+	MOVX	@R1, A					;Save the word in buffer
+	INC	R1					;Pointer ++
 	
 UART_end:
 	POP	PSW
@@ -645,7 +595,10 @@ TIMER_2:
 	RETI
 
 ; CONSTANT DATA TABLES ---------------------------------
-
-
+LCDTEMPLATE:
+	DB "---P ---N --.--m"				;0-0 Pitch, Compass, Depth (dest)
+	DB "M---  E---  >---"				;0-1 C_PWM, Input buffer
+	DB "--.-V +--.--C --"				;1-0 Voltage, Temperature, C_input
+	DB "---P ---N --.--m"				;1-1 Pitch, Compass, Depth (real)
 
 END;
