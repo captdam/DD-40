@@ -28,10 +28,10 @@ Jun 30	ROV-side and operator-side controller software implementation.
 	ROV software									WIP
 
 Jul 24	Experiment and testing the ROV in swimming pool.
-	Operator console software test							PENDING
+	Operator console software test							Finished at Apr 20
 	ROV software test								PENDING
 	System software test								PENDING
-	Operator console circuit test							PENDING
+	Operator console circuit test							WIP
 	ROV circuit test								PENDING
 	System circuit test								PENDING
 	System test (simulation)							PENDING
@@ -39,5 +39,5 @@ Jul 24	Experiment and testing the ROV in swimming pool.
 	System test (lake, dirty water)							PENDING
 
 Aug 1	Improving and documentation.
-	Improving									PENDING
+	Improving									WIP
 	Documentation									WIP
