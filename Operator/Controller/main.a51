@@ -6,8 +6,8 @@ $INCLUDE	(c_cfg.a51)
 $INCLUDE	(c_ram.a51)
 	
 ; NOTICE:	MAIN ROUTINE			USING REGISTER BANK 0 ONLY!
-;		LCD INTERRUPT SUBROUTINE	USING REGISTER BANK 2 ONLY!
-;		UART INTERRUPT SUBROUTINE	USING REGISTER BANK 3 ONLY!
+;		LCD INTERRUPT SERVICE ROUTINE	USING REGISTER BANK 2 ONLY!
+;		UART INTERRUPT SERVICE ROUTINE	USING REGISTER BANK 3 ONLY!
 ; NOTICE: LCD MODULE IS WRITE-ONLY!
 
 
@@ -42,7 +42,7 @@ DIGITAL_INPUT:						;User enter a digital to AutoPilot console
 	; Modify: DIGI_BUFFER_X
 	MOV	DIGI_BUFFER_E, DIGI_BUFFER_H		;Data shift left, Data Low = input
 	MOV	DIGI_BUFFER_H, DIGI_BUFFER_L
-	MOV	DIGI_BUFFER_L, R7			;Input is guaranted to be from 0x00-0x09
+	MOV	DIGI_BUFFER_L, R7			;Input is guaranted to be in the range of 0x00-0x09
 	RET
 
 DIGITAL_GETPWM:
@@ -71,6 +71,7 @@ INI:							;Boot setup
 	MOV	DPTR, #LCDTEMPLATE			;Write LCD data to buffer
 	MOV	R0, #LCD_BUFFER
 	INI_lcd:
+	CLR	A
 	MOVC	A, @A+DPTR				;Copy from code segment
 	MOVX	@R0, A					;Write to XRAM
 	INC	DPTR
@@ -103,6 +104,9 @@ MAIN:							;Main cycle: execute while receive synch signal
 	CLR	LED_IDEL
 	CLR	LED_COMERROR
 	
+	MOV	AR_30, #TX_BUFFER				;Reset Tx/Rx buffer pointer (flush buffers)
+	MOV	AR_31, #RX_BUFFER
+	
 USING	0
 SCAN:							;Scan keyboard
 	MOV	KEY_DRIVE, #01111111B			;Scan row 7: X - X - X - X - X - XForward - Forward - Backward
@@ -134,10 +138,10 @@ SCAN:							;Scan keyboard
 	MOV	A, SCAN_DIVIDER				;Clock divider for digital input
 	ADD	A, #(0x100 / DIGITAL_PRESCA)
 	MOV	SCAN_DIVIDER, A
-	JC	SCAN_keyboard
+	JC	SCAN_digital
 	JMP	SCAN_end
 	
-	SCAN_keyboard:
+	SCAN_digital:
 	MOV	KEY_DRIVE, #11110111B			;Scan row 3: Digital input low
 	MOV	A, KEY_SCAN
 	MOV	R7, #8
@@ -163,8 +167,9 @@ SCAN:							;Scan keyboard
 	MOV	COMPASS_DEST+1, A
 	ADD	A, #-0x36				;Is the number >= 360
 	JNC	SCAN_end				;35+(-36):NC; 36+(-36):C
-	MOV	COMPASS_DEST+1, #0x00			;COMPASS >= 360, invalid input! Correct to 00x
-	MOV	COMPASS_DEST, #0x00
+	CLR	A
+	MOV	COMPASS_DEST+1, A			;COMPASS >= 360, invalid input! Correct to 00x
+	MOV	COMPASS_DEST, A
 	JMP	SCAN_end
 	
 	scan_2_pressure:				;User apply value from gitital input buffer to AutoPilot pressure (depth) control, any depth is OK
@@ -187,17 +192,14 @@ SCAN:							;Scan keyboard
 	SWAP	A
 	ORL	A, DIGI_BUFFER_H
 	MOV	PITCH_DEST+1, A
-	MOV	B, A					;Save PITCH_DEST high (100s and 10s)
-	ADD	A, #-0x09				;Is the value >= 90? (90=090 --> the 100s and 10s are greater than 09)
-	JNC	SCAN_end				;8+(-9):NC; 9+(-9):C; 10+(-9): C;
-	MOV	A, B					;And the value <= 270 as well?
-	SUBB	A, #0x27				;26-(27):C; 27-(27):NC; 28-(27):NC
-	JNC	SCAN_end
-	;Note:	91, 92: invalid: disable 90.
-	;	271, 272: valid: enable 270. <-- simpler code is better than complex code, "Good design demands good compromises"
-	MOV	PITCH_DEST+1, #0x00			;90 <= PITCH_DEST < 270, invalid input! Correct to 00x
-	MOV	PITCH_DEST, #0x00
-	JMP	SCAN_end				;Only one key at a time, ignor other keys (DNC)
+	;Valid range: 0x00-0x09, 0x27-0x29, 0x30-0x35. Using math method will be too complex; hence, using lookup table
+	MOV	DPTR, #PITCH_VALIDVALUE
+	MOVC	A, @A+DPTR				;DPTR = base value, A is the user input
+	JNZ	SCAN_end				;Result != 0, valid; otherwise, set to 0
+	CLR	A
+	MOV	PITCH_DEST+1, A
+	MOV	PITCH_DEST, A
+	JMP	SCAN_end
 	
 	scan_2_cpwm:					;User apply value from gitital input buffer to custom PWM output control
 	JB	KEY_SCAN.4, scan_2_engine
@@ -224,7 +226,6 @@ SCAN:							;Scan keyboard
 	
 	SCAN_end:
 	MOV	KEY_DRIVE, #11111111B			;Keyboard scan end
-	MOV	ENGINE_POWER, #0xA0			;Engine power is always 100%
 	
 	;	;Test
 ;	MOV	C_PWM, #0x35				;C_PWM = 035%
@@ -234,6 +235,7 @@ SCAN:							;Scan keyboard
 ;	MOV	COMPASS_DEST, #0x50
 ;	MOV	PRESSURE_DEST+1, #0x24			;PRESSURE_DEST = 24.55m
 ;	MOV	PRESSURE_DEST, #0x55
+;	MOV	ENGINE_POWER, #0xA0			;Engine power = 100%
 ;	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
 ;	MOV	DIGI_BUFFER_H, #0x02
 ;	MOV	DIGI_BUFFER_L, #0x03
@@ -242,10 +244,8 @@ SCAN:							;Scan keyboard
 USING	0
 PACK:							;App SFR --> Tx buffer, and send
 	
-	MOV	A, FB_VALVE				;Send first word (not nessary to save it in buffer)
-	ORL	A, FUNC
-	MOV	SBUF, A
-	MOV	R2, A					;Checksum
+	MOV	SBUF, FB_VALVE				;Send first word (not nessary to save it in buffer)
+	MOV	R2, FB_VALVE				;Checksum
 	
 	MOV	AR_30, #TX_BUFFER+1			;Buffer pointer set to second word (buffer --> UART)
 	MOV	R0, #TX_BUFFER+1			;(App SFR --> buffer) XRAM address < 0x0100, hence R0 is OK
@@ -261,6 +261,7 @@ PACK:							;App SFR --> Tx buffer, and send
 	CJNE	R1, #TX_CHECKSUM, PACK_loop		;Loop for 14 times (1 already send, 14 not send, 1 checksum (not need), total 16)
 	
 	CLR	A
+	CLR	C
 	SUBB	A, R2					;Checksum
 	MOVX	@R0, A
 	
@@ -356,18 +357,18 @@ WAITPACKAGE:
 USING	0
 CHECKSUM:
 	MOV	R2, #0					;Clear R2, prepare to calculate checksum
-	
 	MOV	R0, #RX_BUFFER				;Go through all data in the rx buffer
-	checksum_loop:
+	
+	CHECKSUM_loop:
 	MOVX	A, @R0					;Accumulately adding to get checksum
 	ADD	A, R2
 	MOV	R2, A
 	INC	R0					;Pointer++
-	CLR	A
+	CJNE	R0, #0, CHECKSUM_loop			;Rx_Buffer located in 0xF0 - 0xFF, when all data are added, R0 should be 0x100, which will be truncated to 0x00
 	
 	SETB	LED_COMERROR
 	SETB	LED_IDEL
-	JNZ	$					;E_Data + checksum should be 0. If checksum error, stall here
+	JNZ	$					;Data + checksum should be 0. If checksum error, stall here
 	CLR	LED_COMERROR
 	CLR	LED_IDEL
 
@@ -380,7 +381,7 @@ UNPACK:							;Rx buffer --> App SFR
 	MOVX	A, @R0
 	MOV	@R1, A
 	INC	R0
-	INC	R1
+	INC	R1 
 	CJNE	R1, #RX_CHECKSUM, UNPACK_loop		;Loop for 15 times (15 data, 1 checksum (not need), total 16)
 
 USING	0
@@ -479,6 +480,7 @@ TIMER_0:						;Update LCD, R0 = LCD pointer
 	
 	MOV	A, R0					;Check LCD line end
 	ANL	A, #0xF0				;Only look high part, which indecates the line number of the LCD data (LCD has 16 charcaters in one line)
+	CLR	C
 	SUBB	A, R7					;Compare with line number from last time
 	JZ	TIMER_0_sendchar			;If same, send data char; otherwise, send line number
 	
@@ -507,7 +509,7 @@ TIMER_0:						;Update LCD, R0 = LCD pointer
 	MOV	LCD_DATA, A
 	CLR	LCD_E0
 	
-	MOV	A, #0x20				;Get date of LCD1
+	MOV	A, #0x20				;Get data from LCD1 buffer
 	ADD	A, R0
 	MOV	R1, A
 	MOVX	A, @R1
@@ -547,7 +549,7 @@ UART_txc:
 	CJNE	R0, #TX_BUFFER+16, uart_txc_send	;Is package fully send?
 	JMP	UART_end
 	
-	uart_txc_send:
+	UART_txc_send:
 	MOVX	A, @R0					;Get data from buffer and send to UART
 	MOV	SBUF, A
 	INC	R0					;Pointer inc
@@ -562,24 +564,22 @@ UART_rxc:
 	MOV	A, SBUF					;Get data from UART
 	CJNE	A, #0xFF, uart_rxc_data			;Synch signal?
 	
-	uart_rxc_sync:
+	UART_rxc_sync:
 	MOV	A, SP					;Write return PC to MAIN
-	SUBB	A, #3					;Stack = (H) PSW(Current pointer), ACC, PC_H, PC_L (L)
+	ADD	A, #-3					;Stack = (H) PSW(Current pointer), ACC, PC_H, PC_L (L)
 	MOV	R0, A
 	MOV	@R0, #LOW MAIN
 	INC	R0
 	MOV	@R0, #HIGH MAIN
+	JMP	UART_end
 	
-	MOV	R0, #TX_BUFFER				;Reset Tx/Rx buffer pointer (flush buffers)
-	MOV	R1, #RX_BUFFER
+	UART_rxc_data:
+	XCH	A, R1					;Rollback pointer if overflow
+	JNZ	UART_rxc_receive			;Rx buffer is located in XRAM 0xF0 to 0xFF. If Rx pointer becomes 0x00, it means the Rx buffer overflowed
+	DEC	A					;In this case, the last word in the buffer will be overwrite
 	
-	JMP	UART_end				;Exit
-	
-	uart_rxc_data:
-	MOV	A, R1					;Rollback pointer if overflow
-	JNZ	UART_end				;Rx buffer is located in XRAM 0xF0 to 0xFF. If Rx pointer becomes 0x00, it means the Rx buffer overflowed
-	DEC	R1					;In this case, the last word in the buffer will be overwrite
-	
+	UART_rxc_receive:
+	XCH	A, R1
 	MOVX	@R1, A					;Save the word in buffer
 	INC	R1					;Pointer ++
 	
@@ -598,7 +598,22 @@ TIMER_2:
 LCDTEMPLATE:
 	DB "---P ---N --.--m"				;0-0 Pitch, Compass, Depth (dest)
 	DB "M---  E---  >---"				;0-1 C_PWM, Input buffer
-	DB "--.-V +--.--C --"				;1-0 Voltage, Temperature, C_input
+	DB "--.-V +--.-C  --"				;1-0 Voltage, Temperature, C_input
 	DB "---P ---N --.--m"				;1-1 Pitch, Compass, Depth (real)
+
+PITCH_VALIDVALUE:
+	;If lookup[input] != 0: input is valid. Input range is 0x00 to 0x99
+	;Valid: 0x00-0x09, 0x27-0x29, 0x30-0x35
+	;  x0   x1   x2   x3   x4   x5   x6   x7   x8   x9   xA   xB   xC   xD   xE   xF
+	DB 0x0A,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x00,0x00,0x00,0x00,0x00,0x00 ;0
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 ;1
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x07,0x08,0x09,0x00,0x00,0x00,0x00,0x00,0x00 ;2
+	DB 0x0A,0x01,0x02,0x03,0x04,0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 ;3
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 ;4
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 ;5
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 ;6
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 ;7
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 ;8
+	DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00                               ;9
 
 END;
