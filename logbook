@@ -43,3 +43,8 @@ Mar 17		Re-designing the RS-485 circuit with op-amp
 Mar 23		Finish the RS-485 like communication negative amplifier Nmos circuit.
 
 Apr 20		Finalize operator-side console code, tested.
+
+May 17		Communication system circuit test.
+
+May 20		Communication system circuit implementation on operator-side console.
+May 22		Communication system cable implementation.
