@@ -1,12 +1,17 @@
 # Communication protocol tech document - Physical layer
 
 ## Introduction
-In this document, the method used by the physical layer of the communication system will be discussed here.
 
+In this document, the method used by the physical layer of the communication system will be discussed here. In the first part of this document, it will discuss the design of the circuit; in the second part of this document, the physical implementation will be discussed.
 
-## Purpose
+There is full-duplex UART port on the ROV's controller (ATmeage328P) and the operator-side console (STC89C52RC). By connecting the UART port of this two MCUs, the two systems should be able to exchange data between each other directly. Plus, to give the operator a directly and clearly view of the surrending of the ROV, there is a camera mounted on the ROv. Which means, there will be an adtional wire carring video signal other than the data wires.
 
-There is full-duplex UART port on the ROV's controller (ATmeage328P) and the operator-side console (STC89C52RC). By connecting the UART port of this two MCUs, the two systems should be able to exchange data between each other directly.
+In this document, the following terms will be used:
+- Control signal: Digital signal send from operator-side console to ROV. The operator will send this signal to the ROV to control the ROV, or to setup the autopilot function on the ROV.
+- Data signal: Digital signal send from ROV to operator-side console. The ROV will gather data such as pitch angle, direction and ect. and send them to the operator-side console. This signal helps the operator to understant the ROV's statue.
+- Video signal: Analog video signal send from camara on the ROV to screen on the operator-side console.
+
+## Design scope
 
 The ROV is a remotely controlled device, which means, the deeper the ROV dives, the higher the ROV's capability will be. However, when the depth of the ROV increases, the distance between the ROV and the operator-side console increases as well.
 
@@ -19,26 +24,26 @@ Furthermore, to minimize the cost of the system, the circuit should be as simple
 The physical layer should be able to provide a reliable, real-time (with acceptable delay), and full-duplex transmission.
 
 
-## Solutions
+## Design
 
 ### Transmission speed
 
 The higher the transmission speed, the worse the communication quality will be. Therefore, the transmission speed should be just higher than the required transmission speed of the application.
 
 By analyzing of the software:
-1. The ROV communicates with the operator-side console every 1/4 second, named as a frame.
+1. The ROV communicates with the operator-side console every 1/4 second.
 2. Assume the ROV and operator-side console takes about 100ms to prepare data, encode and decode the package. As a result, the window for data transmission is 150ms.
-2. In each frame, the ROV and the operator exchanges about 20 bytes (10 to 20) of data.
-3. Each byte consider as 8 bits, plus a start bit and a stop byte.
+2. Each time, the ROV and the operator exchanges about 20 bytes (10 to 20) of data.
+3. Each byte consider as 8 bits, plus a start bit and two stop byte.
 
-(8 + 1 + 1) * 20 * (1/0.15) = 1333 BAUD
+(8 + 1 + 2) * 20 * (1/0.15) = 1466.67 BAUD
 
 Ceiling to the lowest standard BAUD, the BAUD used by this system is 2400 BAUD.
 
 
 ### High-voltage differential signalling (RS-485 like)
 
-The MCU on both operator-side and ROV comes with UART port. A typically TTL UART transmission is a single wire bus to connect a master (drive the wire) with several slaves (High-Z, listen to the wire). When the data on the line is 0, the master will drive the wire low (0V); otherwise, the master will drive the wire high (5V).
+The MCU on both operator-side and ROV comes with UART port. A typically TTL UART transmission is a single-wire bus to connect a master (drive the wire) with several slaves (High-Z, listen to the wire). When the data is 0, the master will drive the wire low (0V); otherwise, the master will drive the wire high (5V).
 
 However, due to the length of the wire, strong noise could alternate the signal on the wire. When the master drives the wire high, applying a -5V noise could alternate the signal on the wire from 1 to 0; when the master drives the wire low, applying a +5V noise could alternate the signal on the wire from low to high.
 
@@ -68,7 +73,7 @@ By using the differential signalling, the noise is filtered.
 Since the transmission cable and 12V power supply is built in one multi-core cable, the transmission signal could be amplified to 12 V instead of 5V. During this process, the transmission system could handle stronger EMI noise.
 
 
-## Circuit
+## Circuit design
 
 The differential signalling system circuit consist of 3 parts:
 - Positive amplifier (Tx+): When it receives logic 1 (5V), the output will be 12V; when it receives logic 0 (0V), the output will be 0V.
@@ -76,7 +81,7 @@ The differential signalling system circuit consist of 3 parts:
 - Receiver (Rx): If Rx+ is greater than Rx-, the output will be logic 1 (5V); otherwise, the output will be logic 0 (0V).
 Since the transmission system is full-duplex, there is a pair of differential signalling transmitter and receiver. One of them are responsible for sending signals from ROV to the operator-side console, another one for send signal from operator-side console to ROV.
 
-There are two methods to design this system. One of them is using OpAmp, and the other one is using NMOS. The following shows the circuit and simulation result using LTSpice. According to the simulation, since the cable is very long, the cable comes with 50 ohms of resistance and 1nC capacitance between the positive and negative wire.
+There are two methods to design this system. One of them is using OpAmp, and the other one is using NMOS. The following shows the circuit and simulation result using LTSpice. According to the simulation, since the cable is very long, the cable comes with 50 ohms of resistance and 1nC capacitance between the positive-side and negative-side of the wire.
 
 ### Method 1 - OpAmp
 
@@ -94,6 +99,35 @@ Like the OpAmp method, the method uses an OP27 as the comparing circuit on the r
 
 As the simulation shows, the NMOS method has less delay than the OpAmp method (1.5 microsecond delay). Furthermore, the NMOS requires less components. However, for this method, there will always be one NMOS turns on, which means higher power consumption. By increasing the value of resistors, the power consumption could be reduced, but circuit delay may increase.
 
-------
-
 By comparing both methods, the NMOS design is choose for the communication circuit.
+
+
+## Circuit implementation  (==============================WIP====================================)
+
+### Digital signals (controll signal and data signal)
+
+Due to supply issue, three 2N7000 is used to replac those 2N7002 on the transmitter side; a LM386 is used to replac the OP27 on the receiver-side. Furthermore, the actural impedence of the transmission cord is different from the simulation. Therefore, the value of the pull-up resistors needs to be re-sellected, in order to have an acceptable compromise between the circut delay and power comsuption.
+
+In fact, finding the suitable values of the resistors by calculation is extermelly difficult. Therefore, the "buret-force" method is used to determine the value.
+
+The following shows some attempts (length of the transmission cord is 10m, the cord will be talked in next section):
+
+
+By analysis the aboving attempts, the following one is choosed. This circuit provides a delay (rising time and falling time) less than 10ns with average power comsuption of 120mA, which is an acceptable compromise:
+
+
+### Video signal
+
+The above experiments shows that, the communication system is able to handle digital communication. The following experiments will determine wheather the system could handle digital communication plus analog video communication.
+
+Do notice that,
+
+
+## Cable implementation
+
+Obviously, the first concern when design the cable of the ROV is that: the cable, particularly the connector, should be waterproof, even under certain pressure.
+
+The second concern is that, in some case, the ROV may malfunction. In this case, the ROV will lose its proplusion; hence, the operator will need to use the cable to pull the ROV back. In exterme case, the ROV may my trapped by seaweeds. Therefore, the cable must be able to handle certain force.
+
+Furthermore, bacause the cable carries power of the ROV and the data/control/video signal, the cable needs to be multi-core, comes with at least 2 power grids, and at least 5 (2 for differential-signalling control signal, 2 for data signal, 1 for video signal) shielded signal wires. Furthermore, because of the differential signalling, it is better to have the control signal and the data signal go through twisted pairs with diffenent twist length.
+
