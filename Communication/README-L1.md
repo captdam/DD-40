@@ -166,10 +166,7 @@ To deal with this issue, the following method is used:
 ![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-3.jpg "Cable implementation")
 
 3 - Soldering the wires onto the aviation plug, according to the table.
-![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-3.jpg "Cable implementation")
-
-4 - Securing the aviation plug. The rubber ring located in the tail of the aviation plug's body should now tightly attached to the cable's outer layer to prevent water inleaking.
 ![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-4.jpg "Cable implementation")
 
-5 - To prevent water inleaking from the end of the shriking tube, applying a piece of aluminum foil tape to seal the cable.
+4 - Securing the aviation plug. The rubber ring located in the tail of the aviation plug's body should now tightly attached to the cable's outer layer to prevent water inleaking. To prevent water inleaking from the end of the shriking tube, applying a piece of aluminum foil tape to seal the cable.
 ![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-5.jpg "Cable implementation")
