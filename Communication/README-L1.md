@@ -85,7 +85,7 @@ There are two methods to design this system. One of them is using OpAmp, and the
 
 ### Method 1 - OpAmp
 
-![RS-485 using OpAmp](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/RS-485%20like%20OpAmp.JPG "RS-485 using OpAmp")
+![RS-485 using OpAmp](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/RS485_like_OpAmp.jpg "RS-485 using OpAmp")
 
 In this circuit, on the transmitter side, one OP27 is used for negative amplifier, and one OP37 is used for positive amplifier; on the receiver side, another OP27 is used for comparing the voltage on both wires.
 
@@ -93,7 +93,7 @@ As the simulation result shows, this solution comes with about 5 microsecond del
 
 ### Method 2 - NMOS
 
-![RS-485 using NMOS](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/RS-485%20like%20NMOS.JPG "RS-485 using NMOS")
+![RS-485 using NMOS](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/RS485_like_NMOS.jpg "RS-485 using NMOS")
 
 Like the OpAmp method, the method uses an OP27 as the comparing circuit on the receiver side. However, on the transmitter side, a 2N7002 NMOS is used for negative amplifier; two 2N7002 NMOS are cascade to form a positive amplifier.
 
@@ -102,7 +102,7 @@ As the simulation shows, the NMOS method has less delay than the OpAmp method (1
 By comparing both methods, the NMOS design is choose for the communication circuit.
 
 
-## Circuit implementation  (==============================WIP====================================)
+## Circuit implementation
 
 ### Digital signals (controll signal and data signal)
 
@@ -120,14 +120,56 @@ By analysis the aboving attempts, the following one is choosed. This circuit pro
 
 The above experiments shows that, the communication system is able to handle digital communication. The following experiments will determine wheather the system could handle digital communication plus analog video communication.
 
-Do notice that,
+Do notice that, on one hand, althrough the video signal is an analog signal, it still generates EMI on the data wrie and control wire. Thanks to the differential signalling, the EMI is neglectable. On the other hand, the data signal and control will generate EMI on the video. Because the video signal is not differential signalling, the effect will be significant.
+
+It is clear to say that, the quality of the video will be significantly affect by the control signal and the data signal. However, even the video will be affected, user (human) should be able to watch the video with minor image defect. In fact, when the ROV is working underwater, the surrending will be very dark. Furthermore, the camera mounted on the ROV is design for observation, not moving making (image quality is not important). That means, the video image defect is neglectable.
+
+The picture above shows the orginal image (by directly connecting the camera to the monitor):
+
+
+The picture above shows the image coming from the camera via the 10-meter-long communication cord, when there is no control signal or data signal (by powering the control wire and data wire with DC). The image loses some color accuracy due to noise and wire impedance.
+
+
+The software will exchanging data at 2400 BAUD. To simulate this, powering the control wire and data wire with 12V 2400Hz square wave. Like the above picture shows, in this case, some dot could be observed on the image. This is bacuase the switching of the data signal and control signal generate EMI on the video signal. However, the user is still able to see the video with this much image defect.
+
+
+If the data exchanging rate keep increasing, when the data rate reaches 10k BAUD (simulated by using 12V 10kHz square wave). There will be significant defect on the image, like the above picture shows. When the data rate reaches 30k BAUD, the video signal failed.
+
+In conclusion, this system is capable with the design specification.
 
 
 ## Cable implementation
 
 Obviously, the first concern when design the cable of the ROV is that: the cable, particularly the connector, should be waterproof, even under certain pressure.
 
-The second concern is that, in some case, the ROV may malfunction. In this case, the ROV will lose its proplusion; hence, the operator will need to use the cable to pull the ROV back. In exterme case, the ROV may my trapped by seaweeds. Therefore, the cable must be able to handle certain force.
+The second concern is that, in some case, the ROV may malfunction. In this case, the ROV will lose its proplusion; hence, the operator will need to use the cable to pull the ROV back. In exterme case, the ROV may be trapped by something like seaweeds. Therefore, the cable must be able to handle certain force.
 
 Furthermore, bacause the cable carries power of the ROV and the data/control/video signal, the cable needs to be multi-core, comes with at least 2 power grids, and at least 5 (2 for differential-signalling control signal, 2 for data signal, 1 for video signal) shielded signal wires. Furthermore, because of the differential signalling, it is better to have the control signal and the data signal go through twisted pairs with diffenent twist length.
 
+To satisfy the above requirements, IP68 rated waterproof aviation plug is used. Like the below picture shows, the aviation plug used in this system has 7 pins, each can handle up to 15A of current.
+![Aviation connector](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/connector.jpg "Aviation connector")
+
+The cable used in this system is orginal designed for elevator, which is specially designed for using with high tensile force. Like the below picture shows, the cable has 3 components. The first component is a pair of high strength steel cable, which is used to handle the tensile force. The second component is a pair of 1-square-minimeter power wire, which is designed for power supply. The third component is four pairs of double shield twisted wire with different twist length, which is used to carry signals.
+![Cable](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-1.jpg "Cable")
+
+This system requires a pair of power cable, two pairs of twisted wire for data and control signals, and one wire for video signal. The following table shows the connection of wires and the plug. Notice that, the orange pair and the brown pair has the longest and shortest twist length, using them for control signal and data signal respectively could provide lowest EMI between them.
+![Connection](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/connection.jpg "Connection")
+
+The challenge here is to implement the cable system, especially that the aviation accepts round cable, but the elevator cable is flat.
+
+To deal with this issue, the following method is used:
+
+1 - Removing the outer rubber of the cable. Then, wraping the wires with electrical tape to form a round shape.
+![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-2.jpg "Cable implementation")
+
+2 - Using shrinking tube to tight the cable.
+![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-3.jpg "Cable implementation")
+
+3 - Soldering the wires onto the aviation plug, according to the table.
+![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-3.jpg "Cable implementation")
+
+4 - Securing the aviation plug. The rubber ring located in the tail of the aviation plug's body should now tightly attached to the cable's outer layer to prevent water inleaking.
+![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-4.jpg "Cable implementation")
+
+5 - To prevent water inleaking from the end of the shriking tube, applying a piece of aluminum foil tape to seal the cable.
+![Cable implementation](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/cable-5.jpg "Cable implementation")
