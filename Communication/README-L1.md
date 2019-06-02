@@ -35,8 +35,8 @@ The higher the transmission speed, the worse the communication quality will be. 
 By analyzing of the software:
 1. The ROV communicates with the operator-side console every 1/4 second.
 2. Assume the ROV and operator-side console takes about 100ms to prepare data, encode and decode the package. As a result, the window for data transmission is 150ms.
-2. Each time, the ROV and the operator exchanges about 20 bytes (10 to 20) of data.
-3. Each byte consider as 8 bits, plus a start bit and two stop byte.
+3. Each time, the ROV and the operator exchanges about 20 bytes (10 to 20) of data.
+4. Each byte consider as 8 bits, plus a start bit and two stop byte.
 
 (8 + 1 + 2) * 20 * (1/0.15) = 1466.67 BAUD
 
@@ -151,7 +151,7 @@ By analysis the above attempts, the 2k version is choose. The following graph sh
 
 This circuit provides a delay (rising time and falling time) less than 5us with average power consumption of 120mA, which is an acceptable compromise. The final scheme is shown below:
 
-![Test scheme](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/scheme-final.jpg "Test scheme")
+![Final scheme](https://raw.githubusercontent.com/captdam/DD-40/master/Communication/PhysicalLayer/scheme-final.jpg "Final scheme")
 
 The delay is 5 microseconds, it may seem to be long; however, the communication spped is 2400 BAUD. Assume the data/command wires carry 2400Hz square wave, the period of the square wave is 417 microseconds, which is about 80 times of the delay.
 
