@@ -27,16 +27,15 @@ Feb 20		Operator console design (mech).
 Feb 23		Operator console code finished and tested (except for keyboard functions).
 
 Feb 26		Operator console code: userInputApply (keyboard functions).
-Feb 28		design variant of RS 485 circuit.
-Mar 01		design variant of astable multivibrator.
+Feb 28		Design variant of RS 485 circuit.
+Mar 01		Design variant of astable multivibrator.
 
 Mar 08		Begin to write document for operator-side console
 
 Mar 11		Operator-side console code optimization.
 Mar 13          Start to design H brige electric machine circuit
 Mar 15 		Soldering the keyboard and power supply circuits for operator-side console
-Mar 16		Soldering the LCD, switchs and building 
-Mar 16		the operator-side console box mechanically
+Mar 16		Soldering the LCD, switchs and building the operator-side console box mechanically
 Mar 17		Implementing astable multivibrator
 Mar 17		Re-designing the RS-485 circuit with op-amp
 
