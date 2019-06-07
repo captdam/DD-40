@@ -20,7 +20,7 @@ Mar 29	Operator controller design (operator-side hardware and software abstracti
 Semester II
 
 May 10	ROV mechanism and actuator implementation.
-	ROV structure fab								PENDING
+	ROV structure fab								WIP
 	ROV actuator installing								PENDING
 
 Jun 30	ROV-side and operator-side controller software implementation.
@@ -31,7 +31,7 @@ Jul 24	Experiment and testing the ROV in swimming pool.
 	Operator console software test							Finished at Apr 20
 	ROV software test								PENDING
 	System software test								PENDING
-	Operator console circuit test							WIP
+	Operator console circuit test							Finished at May 20
 	ROV circuit test								PENDING
 	System circuit test								PENDING
 	System test (simulation)							PENDING
