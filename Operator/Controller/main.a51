@@ -81,11 +81,17 @@ INI:							;Boot setup
 	MOV	SCON, #0x50				;UART mode1 (8-bit, flex baud), enable read
 	SETB	ES
 	
-	MOV	TH1, #UART_RELOAD			;Set timer1 auto-reload value - timer1 is for UART, timer2 is for LCD
-	MOV	TMOD, #0x21				;Set Timer1 mode to auto-reload, timer0 mode to 16-bit timer
+	MOV	TH1, #0xF3				;Set timer1 auto-reload value: -1M/2400/32
+	MOV	TMOD, #0x21				;Set Timer1 mode to auto-reload, timer0 mode to 16-bit timer - timer1 UART BAUD generator, timer2 is LCD refresh rate generator
 	SETB	TR1					;Enable timer1 and timer0, enable timer0 interrupt
 	SETB	TR0
 	SETB	ET0
+	
+	MOV	RCAP2H, #0x10				;UART BAUD generator = 13 - Timer2 is for Rx timeout, which identify new package
+	MOV	RCAP2L, #0x40				;To send 1 byte = 13 * 32 * 10 (1 start bit + 8 data bits + 1 stop bit), takes 4.16ms
+	MOV	T2MOD, #0x01				;Time2 count down
+	SETB	TR2					;Enable timer2 and its interrupt
+	SETB	ET2
 	
 	MOV	AR_20, #LCD_BUFFER			;Reset LCD buffer pointer, both LCDs share same pointer
 	MOV	AR_30, #TX_BUFFER			;Reset Tx/Rx buffer pointer (flush buffers)
@@ -104,7 +110,7 @@ MAIN:							;Main cycle: execute while receive synch signal
 	CLR	LED_IDEL
 	CLR	LED_COMERROR
 	
-	MOV	AR_30, #TX_BUFFER				;Reset Tx/Rx buffer pointer (flush buffers)
+	MOV	AR_30, #TX_BUFFER			;Reset Tx/Rx buffer pointer (flush buffers)
 	MOV	AR_31, #RX_BUFFER
 	
 USING	0
@@ -136,7 +142,7 @@ SCAN:							;Scan keyboard
 	MOV	C_OUT, A
 	
 	MOV	A, SCAN_DIVIDER				;Clock divider for digital input
-	ADD	A, #(0x100 / DIGITAL_PRESCA)
+	ADD	A, #(0x100 / 4)
 	MOV	SCAN_DIVIDER, A
 	JC	SCAN_digital
 	JMP	SCAN_end
@@ -561,8 +567,10 @@ UART_txc:
 	JMP	UART_end
 	
 UART_rxc:
-	MOV	A, SBUF					;Get data from UART
-	CJNE	A, #0xFF, uart_rxc_data			;Synch signal?
+	CLR	A					;Reset Rx package timeout counter
+	XCH	A, RX_PAKTIMEOUT
+	ADD	A, #-5					;Timeout? If timeout, it means new package
+	JNC	UART_rxc_data				;If timeout, RX_PAKTIMEOUT > 5, (5+i) + (unsigned)(-5) will overflow
 	
 	UART_rxc_sync:
 	MOV	A, SP					;Write return PC to MAIN
@@ -576,10 +584,10 @@ UART_rxc:
 	UART_rxc_data:
 	XCH	A, R1					;Rollback pointer if overflow
 	JNZ	UART_rxc_receive			;Rx buffer is located in XRAM 0xF0 to 0xFF. If Rx pointer becomes 0x00, it means the Rx buffer overflowed
-	DEC	A					;In this case, the last word in the buffer will be overwrite
+	DEC	R1					;In this case, the last word in the buffer will be overwrite
 	
 	UART_rxc_receive:
-	XCH	A, R1
+	MOV	A, SBUF
 	MOVX	@R1, A					;Save the word in buffer
 	INC	R1					;Pointer ++
 	
@@ -592,6 +600,19 @@ USING	0
 TIMER_2:
 	CLR	TF2
 	CLR	EXF2
+	
+	PUSH	ACC
+	PUSH	PSW
+	
+	MOV	A, RX_PAKTIMEOUT
+	INC	A
+	JNZ	TIMER_2_nonoverflow
+	DEC	A
+	TIMER_2_nonoverflow:
+	MOV	RX_PAKTIMEOUT, A
+	
+	POP	PSW
+	POP	ACC
 	RETI
 
 ; CONSTANT DATA TABLES ---------------------------------
