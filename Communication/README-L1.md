@@ -36,9 +36,9 @@ According to the testing result from software:
 1. The ROV communicates with the operator-side console every 1/4 second.
 2. By assuming the ROV and the operator-side console takes about 100ms to prepare data, encode and decode the package, the window for data transmission should be 150ms.
 3. In each time, the ROV and the operator exchanges about 20 bytes (10 to 20) of data.
-4. Each byte considers as 8 bits with an additional start bit and two additional stop ????byte.????
+4. Each byte considers as 8 bits with an additional start bit and one additional stop bit.
 
-(8 + 1 + 2) * 20 * (1/0.15) = 1466.67 BAUD
+(8 + 1 + 1) * 20 * (1/0.15) = 1333.33 BAUD
 
 Ceiling to the lowest standard BAUD, the BAUD applies by this system is 2400 BAUD.
 
