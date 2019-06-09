@@ -125,7 +125,56 @@ To receive package. Once the word arrives, the UART controller fire interrupt re
 For the operator-side console's transport layer, there is an additional function. The transport layer will measure the timer interval between current interrupt and the last interrupt. If the interval is greater than 20 mini seconds, the transport layer will terminate current process. This can synchronize the operator-side console with the ROV.
 
 The following pseudocode shows algorithm of the transport layer:
-https://gist.github.com/captdam/391cff2f2991f0ef75b98b1c08f32e24.js
+```c
+uint8_t txBuffer[16], rxBuffer[16]; //16 bytes of Tx and Rx buffer on both side
+unsigned int txc, rxc; //Pointer on both side
+
+//ROV side
+ISR_timer() { //Fires every 250ms
+	txBuffer[] = applicationOutputData; //Save application data in Rx buffer
+	txBuffer[15] = getChecksum(txBuffer); //Get checksum
+	txBuffer[15] = getChecksum(txBuffer); //Get checksum
+	UART = 0x00; //This will turn on Tx
+	
+	if (rxp == 16 && rxBuffer[15] == getChecksum(rxBuffer)) //Package length OK, checksum OK
+		applicationInputData = rxBuffer[]; //Apply control
+	
+	rxp = 0;
+}
+
+ISR_tx() {
+	if (txp < 16) //Send all data in the buffer
+		UART = txBuffer[txp++]; //If no data provided to Tx, Tx will be turned off
+}
+
+ISR_rx() {
+	if (rxp >= 16) //Check buffer overflow
+		rxp--; //In this case, the last byte of the rx buffer will be overwritten
+		
+	rxBuffer[rxp++] = UART; //Write data to buffer
+}
+
+
+//Operator-side console
+some_miniseconds > time_to_send_one_byte && some_miniseconds < 250ms - time_to_send_a_package
+
+ISR_tx() {
+	if (txp < 16) //Send all data in the buffer
+		UART = txBuffer[txp++]; //If no data provided to Tx, Tx will be turned off
+}
+
+ISR_rx() {
+	if (currentTime() - lastTime > 20000) //Check time interval, 20'000us = 20'000 cycles @ 12MHz, 12T
+		__SYSTEM_RESET_PHASE__ //Synch with ROV, terminate current work
+	
+	lastTime = currentTime();
+	
+	if (rxp >= 16) //Check buffer overflow
+		rxp--; //In this case, the last byte of the rx buffer will be overwritten
+		
+	rxBuffer[rxp++] = UART; //Write data to buffer
+}
+```
 
 
 ## Edge cases analysis
