@@ -125,9 +125,7 @@ To receive package. Once the word arrives, the UART controller fire interrupt re
 For the operator-side console's transport layer, there is an additional function. The transport layer will measure the timer interval between current interrupt and the last interrupt. If the interval is greater than 20 mini seconds, the transport layer will terminate current process. This can synchronize the operator-side console with the ROV.
 
 The following pseudocode shows algorithm of the transport layer:
-
-<script src="https://gist.github.com/captdam/391cff2f2991f0ef75b98b1c08f32e24.js"></script>
-{% gist 391cff2f2991f0ef75b98b1c08f32e24 %}
+https://gist.github.com/captdam/391cff2f2991f0ef75b98b1c08f32e24.js
 
 
 ## Edge cases analysis
