@@ -1,0 +1,32 @@
+MCU shipped from factory:
+E:0xFF, H:0xD9, L:0x62
+
+E[2:0]: 111
+	Brown-out detector: disabled
+
+H[7]: 1
+	External reset enabled
+H[6]: 1
+	debugWIRE disabled
+H[5]: 0
+	SPI prgramming enabled
+H[4]: 1
+	Watchdog disabled by default
+H[3]: 1
+	EEPROM will be earsed through chip earse
+H[2:1]: 00
+	Bootloader size = 1024
+	Need to be changed to 11 (128 words), bootloader is not required
+H[0]: 1
+	RESET vector at 0x00 instead of bootloader
+
+L[7]: 0
+	Default clock prescaler is 1
+L[6]: 1
+	CLKO pin is GPIO instead of System clock output
+	Set to one when calibrate the RC clock
+L[5:4]: 10
+	Start time = 14CK + 65ms for RESET, 6CK for Power-down/Power-save mode
+L[3:2]: 0010
+	Clock source is internal RC oscillator (8MHz)
+	
