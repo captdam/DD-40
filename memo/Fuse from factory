@@ -24,7 +24,7 @@ L[7]: 0
 	Default clock prescaler is 1
 L[6]: 1
 	CLKO pin is GPIO instead of System clock output
-	Set to one when calibrate the RC clock
+	Set to 0 when calibrate the RC clock
 L[5:4]: 10
 	Start time = 14CK + 65ms for RESET, 6CK for Power-down/Power-save mode
 L[3:2]: 0010
