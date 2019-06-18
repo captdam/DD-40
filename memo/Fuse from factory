@@ -21,7 +21,7 @@ H[0]: 1
 	RESET vector at 0x00 instead of bootloader
 
 L[7]: 0
-	Default clock prescaler is 1
+	Default clock prescaler is 8
 L[6]: 1
 	CLKO pin is GPIO instead of System clock output
 	Set to 0 when calibrate the RC clock
