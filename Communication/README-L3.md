@@ -20,13 +20,13 @@ When define the application layer, regulation from lower layers has to be obey.
 
 According to the specifiction of the lower layer, the ROV and the operator-side console will exchange package __every 250 mini seconds__. The communication __BAUD rate is 2400__ bits pre second. Each package contains __15 byte of data__, __appended with one byte of checksum__. Addtionally, there will be an __SYNCH byte prepend to the package send from ROV to operator-side console__.
 
+Both the AVR and the 8051 architecture is __little-endian__. To take advantage of little-endian architecture, multi-byte data should be send using little-endian format. In another word, __more significant portion of the dta will be saved in higer address, less significant portion of the data will be saved in lower address__. For example, if the data is 0x1234 and the data is saved in buffer address 0x01 and 0x00. In this case, data 0x12 will be placed in buffer address 0x01, data 0x34 in address 0x00. Because the transport layer will first send the data with lowest address; therefore, least significant byte will be send out before the most significant byte.
+
+In fact, for the application layer, it really does not matter if the application using little-endian or big-endian. The task of the transport layer is to copy the package from one end to another end without modify any bytes of the package or the order of the package. Therefore, as long as the ROV and the operator-side console follows the same endian format, there will not be any error in the package exchange process. However, to avoid confuse when program the higher and lower layer of the ROV system, all layers should follow the little-endian notation.
+
 ### From application layer
 
-Both the AVR and the 8051 architecture is little-endian. To take advantage of little-endian architecture, data should be send using little-endian if the data is a multi-byte variabkle. For example, when sending 0x1234, 0x34 should be send first, then 0x12.
-
-The task of the operator-sid econsole is to display data to the user using LCD module which accepts ASCII coded data. Furthermore, the data provided by some sensor is not linear, it has to be translated using lookup-table before processing. If transmit using binary, the data has to be transform from raw to binary, to BCD, then ASCII. If 
-
-The data provided by some sensor is not linear, which means, the data has to be translate by a loopup table before use. The standard method is to translate the data into binary, then send it to the operator-side console. On the operator-side console, the data will be translated into BCD, then adds 0x30 to get the ASCII coded data. However, if the lookup table directly translate the data into BCD, it could avoid reduntance steps and provide higher effiency. Therefore, all integer data should be transmit using BCD coded.
+The data provided by some sensor is not linear, which means, the data has to be translate by a lookup table before use. The standard method is to translate the data into binary, then send it to the operator-side console. On the operator-side console, the data will be translated into BCD, then adds 0x30 to get the ASCII coded data. However, if the lookup table directly translate the data into BCD, it could avoid reduntance steps and provide higher effiency. Therefore, all integer data should be transmit using BCD coded.
 
 
 ## How to send / receive package
