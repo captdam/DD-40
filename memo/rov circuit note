@@ -1,0 +1,2 @@
+Main Controller:
+ADC3 = Voltage supply monitor. Design voltage divider = 10k/(30k+10k), actual = 9.7k/(33k+9.7k)
