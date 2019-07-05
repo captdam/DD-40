@@ -1,2 +1,3 @@
 Main Controller:
-ADC3 = Voltage supply monitor. Design voltage divider = 10k/(30k+10k), actual = 9.7k/(33k+9.7k)
+ADC3 = Voltage supply monitor. Design voltage divider = 10k/(30k+10k), actual = 9.7k/(33k+9.7k), actual Vref = 5.04V.
+        To calculate Vin: Vin = ADC_READ / 255 * 5.04 * (9.7k + 33k) / 9.7k
