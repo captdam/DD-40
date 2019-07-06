@@ -203,6 +203,6 @@ const uint16_t vsLookup[256] PROGMEM = { //Battery voltage in BCD [TODO]
 };
 
 const uint16_t depthLookup[256] PROGMEM = { //Depth in BCD [TODO]
-	//Depth(cm) = ADC_READ
+	//Depth(cm) = (ADC_READ / 5.06 - 0.493) / 3.2487 * 10
 	
 };
