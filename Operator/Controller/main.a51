@@ -135,12 +135,6 @@ SCAN:							;Scan keyboard
 	ANL	A, #11111000B
 	MOV	FUNC, A
 	
-	MOV	KEY_DRIVE, #11101111B			;Scan row 4: Custom output
-	NOP
-	MOV	A, KEY_SCAN
-	CPL	A
-	MOV	C_OUT, A
-	
 	MOV	A, SCAN_DIVIDER				;Clock divider for digital input
 	ADD	A, #(0x100 / 4)
 	MOV	SCAN_DIVIDER, A
@@ -232,20 +226,6 @@ SCAN:							;Scan keyboard
 	
 	SCAN_end:
 	MOV	KEY_DRIVE, #11111111B			;Keyboard scan end
-	
-	;	;Test
-;	MOV	C_PWM, #0x35				;C_PWM = 035%
-;	MOV	PITCH_DEST+1, #0x29			;PITCH_DEST = 296 (64 down)
-;	MOV	PITCH_DEST, #0x60
-;	MOV	COMPASS_DEST+1, #0x13			;COMPASS_DEST = 135
-;	MOV	COMPASS_DEST, #0x50
-;	MOV	PRESSURE_DEST+1, #0x24			;PRESSURE_DEST = 24.55m
-;	MOV	PRESSURE_DEST, #0x55
-;	MOV	ENGINE_POWER, #0xA0			;Engine power = 100%
-;	MOV	DIGI_BUFFER_E, #0x01			;DIGI_BUFFER = 123
-;	MOV	DIGI_BUFFER_H, #0x02
-;	MOV	DIGI_BUFFER_L, #0x03
-	;End of test
 	
 USING	0
 PACK:							;App SFR --> Tx buffer, and send
@@ -417,17 +397,6 @@ DATAUI:							;Update ROV data to LCD1 buffer
 	__M_LCD_APPENDBUFFER
 	MOV	A, B
 	__M_LCD_WRITEBUFFER	1,0,10
-	
-	MOV	A, C_IN					;C_IN 1
-	ANL	A, #00000010B
-	RR	A
-	ORL	A, #0xFE				;If high, print 0xFF (black block); otherwise, print 0xFE (space)
-	__M_LCD_WRITEBUFFER	1,0,14
-	
-	MOV	A, C_IN					;C_IN 0
-	ANL	A, #00000001B
-	ORL	A, #0xFE
-	__M_LCD_APPENDBUFFER
 	
 	MOV	A, PITCH_REAL+1				;PITCH_REAL 100s and 10s
 	CALL	BCD2ASCII
@@ -606,8 +575,9 @@ TIMER_2:
 	
 	MOV	A, RX_PAKTIMEOUT
 	INC	A
-	JNZ	TIMER_2_nonoverflow
+	JNZ	TIMER_2_nonoverflow			;Check if RX_PAKTIMEOUT overflow
 	DEC	A
+	
 	TIMER_2_nonoverflow:
 	MOV	RX_PAKTIMEOUT, A
 	
