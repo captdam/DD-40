@@ -99,10 +99,13 @@ INI:							;Boot setup
 	
 	MOV	SCAN_DIVIDER, #0x00			;Slow down keyboard (digital input) scan speed
 	
+	MOV	ENGINE_POWER, #0xA0			;Default engine power limit = 100%
+	
 	SETB	EA
 
 USING	0
 WAIT:
+	SETB	LED_IDEL
 	JMP	$
 	
 USING	0
@@ -432,7 +435,6 @@ DATAUI:							;Update ROV data to LCD1 buffer
 	
 USING	0
 CYCLE_END:
-	SETB	LED_IDEL
 	JMP	WAIT
 	
 
@@ -551,7 +553,7 @@ UART_rxc:
 	JMP	UART_end
 	
 	UART_rxc_data:
-	XCH	A, R1					;Rollback pointer if overflow
+	MOV	A, R1					;Rollback pointer if overflow
 	JNZ	UART_rxc_receive			;Rx buffer is located in XRAM 0xF0 to 0xFF. If Rx pointer becomes 0x00, it means the Rx buffer overflowed
 	DEC	R1					;In this case, the last word in the buffer will be overwrite
 	
