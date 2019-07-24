@@ -40,8 +40,10 @@
 #define AUX_VALVE_FW 7 //Forware, Backward
 #define AUX_VALVE_BW 11 //NC
 
-#define AP_PITCH_DEADZONE 5
+#define AP_PITCH_DEADZONE 5 //degree
 #define AP_PITCH_MAG 8 //If difference > deadzone + (256/mag), PWM = 100%
+#define AP_DEPTH_DEADZONE 20 //cm
+#define AP_DEPTH_MAG 8
 
 
 /************************************************************************/
@@ -311,10 +313,12 @@ ISR (TIMER0_COMPA_vect) {
 	stopI2C();
 	
 	//Calculate pitch
-	double pitch = -atan( (double)((int16_t)mpu[1]) / (double)((int16_t)mpu[2]) ) / M_PI * 180.0; //tan-1(z-axis/y-axis) to degree, range -90 to 90 
+	double pitch = -atan( (double)((int16_t)mpu[1]) / (double)((int16_t)mpu[2]) ) / M_PI * 180.0; //tan-1(z-axis/y-axis) to degree, range -90 to 90
+	uint16_t pitchInt;
 	if (pitch < 0.0)
-		pitch += 360.0; //270-360 or 0 - 90
-	uint16_t pitchInt = (uint16_t)pitch;
+		pitchInt = (uint16_t)(pitch+360.0); //270-360 or 0 - 90
+	else
+		pitchInt = (uint16_t)pitch;
 	uint16_t pitchBCD = ( b2d(pitchInt / 10) << 8 ) | ( b2d( pitchInt % 10 ) << 4 );
 	
 	//Calculate temperature
@@ -447,17 +451,14 @@ ISR (TIMER0_COMPA_vect) {
 	/************************************************************************/
 	/* STEP 5 - A/P: Modify user command if AP enabled                      */
 	/************************************************************************/
-	if ( command[2] & 0b10000000 ) { //A/P Depth
-		
-	}
 	
 	if ( command[2] & 0b01000000 ) { //A/P Direction
-		
+		/* Not implemented */
 	}
 	
 	if ( command[2] & 0b00100000 ) { //A/P Pitch
 		//Current pitch = (double) pitch, range -90 to 90
-		uint16_t pitchCommand = d2b(command[3]) * 10 + (command[2]>>4);
+		uint16_t pitchCommand = d2b(command[9]) * 10 + (command[8]>>4);
 		double pitchDest = (double)pitchCommand;
 		if (pitchDest > 180.0)
 			pitchDest -= 360.0;
@@ -494,6 +495,49 @@ ISR (TIMER0_COMPA_vect) {
 					uint8_t valvePWM = ( (uint8_t)diff - AP_PITCH_DEADZONE ) * AP_PITCH_MAG;
 					valve[AUX_VALVE_HU] = 0x00;
 					valve[AUX_VALVE_HD] = valvePWM;
+					valve[AUX_VALVE_TU] = valvePWM;
+					valve[AUX_VALVE_TD] = 0x00;
+				}
+			}
+		}
+	}
+	
+	if ( command[2] & 0b10000000 ) { //A/P Depth. A/P Pitch will be overwritten by A/P Depth
+		uint16_t depthReal = d2b(depthBCD>>8) * 100 + d2b((uint8_t)depthBCD);
+		uint16_t depthDest = d2b(command[7]) * 100 + d2b(command[6]);
+		
+		if (depthDest > depthReal) { //Should go deeper
+			double diff = depthDest - depthReal;
+			if (diff > AP_DEPTH_DEADZONE) {
+				if (diff > AP_DEPTH_DEADZONE + 256 / AP_DEPTH_MAG) {
+					valve[AUX_VALVE_HU] = 0x00;
+					valve[AUX_VALVE_HD] = 0xFF;
+					valve[AUX_VALVE_TU] = 0x00;
+					valve[AUX_VALVE_TD] = 0xFF;
+				}
+				else {
+					uint8_t valvePWM = ( (uint8_t)diff - AP_DEPTH_DEADZONE ) * AP_DEPTH_MAG;
+					valve[AUX_VALVE_HU] = 0x00;
+					valve[AUX_VALVE_HD] = valvePWM;
+					valve[AUX_VALVE_TU] = 0x00;
+					valve[AUX_VALVE_TD] = valvePWM;
+				}
+			}
+		}
+		
+		else {
+			double diff = depthReal - depthDest;
+			if (diff > AP_DEPTH_DEADZONE) {
+				if (diff > AP_DEPTH_DEADZONE + 256 / AP_DEPTH_MAG) {
+					valve[AUX_VALVE_HU] = 0xFF;
+					valve[AUX_VALVE_HD] = 0x00;
+					valve[AUX_VALVE_TU] = 0xFF;
+					valve[AUX_VALVE_TD] = 0x00;
+				}
+				else {
+					uint8_t valvePWM = ( (uint8_t)diff - AP_DEPTH_DEADZONE ) * AP_DEPTH_MAG;
+					valve[AUX_VALVE_HU] = valvePWM;
+					valve[AUX_VALVE_HD] = 0x00;
 					valve[AUX_VALVE_TU] = valvePWM;
 					valve[AUX_VALVE_TD] = 0x00;
 				}
