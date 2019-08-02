@@ -16,6 +16,8 @@ To manuver the ROV under water, valve controlled nozzles are used. For example, 
 
 ## Implementation
 
+![ROV](https://raw.githubusercontent.com/captdam/DD-40/master/ROV/rov.jpg "ROV")
+
 ### Headhub
 
 At the head of the ROV, the design group have a camera which is connected with main control center. The camera can send the image signal to the control board and we can see the underwater image by the camera. We also have a headlight and two navigation led at the head of the ROV. The headlight will illuminate the front which can help camera have better image.
