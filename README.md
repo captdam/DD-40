@@ -11,7 +11,7 @@ The operator-side console is an interface for the user to control the ROV. The o
 
 __Mechanical structure__
 A summary of the layout of the operator-side console.
-- https://github.com/captdam/DD-40/blob/master/Operator/Controller/README-MECH.md
+- https://github.com/captdam/DD-40/blob/master/Operator/README-MECH.md
 - Power
 - Video monitor
 - LCD displays
@@ -19,14 +19,14 @@ A summary of the layout of the operator-side console.
 
 __Electrical circuit__
 The circuit board in the operator-side console.
-- https://github.com/captdam/DD-40/blob/master/Operator/Controller/README-ELEC.md
+- https://github.com/captdam/DD-40/blob/master/Operator/README-ELEC.md
 - MCU system
 - LCD displays
 - Matrix input
 
 __Control software__
 An abstruction level description of the software in operator-side console controller.
-- https://github.com/captdam/DD-40/blob/master/Operator/Controller/README-SW.md
+- https://github.com/captdam/DD-40/blob/master/Operator/README-SW.md
 - UART for long-distance communication
 - LCD display interface
 - Input interface
