@@ -1,14 +1,34 @@
 Main Control Board
 
-introduction
+Introduction
 
-The design group use a suitcase for the main control board.
+The design group use a suitcase for the main control board. There are several screens to show the status of the ROV. The switches and 
+control board are connected by basic circuit board which is under the main control board. The design choose suitable size of the circuit
+board to let them fix in the suitcase.
+
+Explaination
+
 For the front half of the suitcase, the design group use a big screen to show the underwater image. The image signal will come back from
 the ROV cemera which is at the head of the ROV by long cable.For the other side of the suit case, the suicase is divide for 3 different 
-part,battary, two small screens and the controlboard and 
+part,battary, data screens and the operation control board 
 switches.
 
 part 1 : battary
 
 The design use a 12 voltage battary for the power supply for the ROV which is at the top right of the board. The battary will connect 
-the power supply switch which is on the top left of the board. \
+the power supply switch which is on the top left of the board. 
+
+part 2 : data screens
+
+Data screens part is at the top left of the board which contains two small screens. The first screen is to show the actual status of the 
+ROV. The ROV has several different sensor, and this board will show the battary voltage, tempeture of ROV, angle of elevation and depth
+on the board from left to right. Another screen is for the auto-pilot mode. We can use the 4 * 4 control board which is at the operation 
+control board to set the data and then, the ROV will move to the location which we set. This screen will show angle of elevation, depth,
+speed from left to the right.
+
+part 3 : operation control board
+
+Operation control board is at the bottom of the suitcase. There are three big switches and five switches on the left of the operation 
+control board and there are two big switches and a 4 * 4 control board on the other side. For the left side, the three big switches are 
+using for, up and down,shift left and right, from top to down. For the right side, the big switches are using for turn left and right and 
+pitch up and pitch down from top to down. The 4 * 4 control board is for setting data for the auto-pilot mode.
