@@ -68,6 +68,7 @@ __L[3:0]__ CKSEL = 0b0010: This set the clock source to be interbnal RC clock. C
 The RC clock has been trim by factory within 10% error. However, in order to reduce the BAUD error when proform UART communication, the clock should be as acurate as possible. To trim the internal clock, first program the low fuse to 0x22. By doing this, the clock will be output on pin 14 of the MCU.
 
 The following graph shows the clock before calibrate:
+
 ![Before calibration](https://raw.githubusercontent.com/captdam/DD-40/master/ROV/doc/calib-before.jpg "Before calibration")
 
 
@@ -91,7 +92,8 @@ where ```RC_CLOCK_CALIBRATE``` is a perdefined 8 bits long constabne. Writing th
 
 The voltage of MCU has a very monir effect on the frequency of the RC clock. A trimed RC clock proforms 1MHz frequency when powered by 5V power supply, and proforms 997kHz when powered by 3.3V power supply. However, it is recommanded to calibrate the RC clock under the desired working voltage for best possible accuaracy.
 
-After calibration, the clock output is shown below::
+After calibration, the clock output is shown below:
+
 ![After calibration](https://raw.githubusercontent.com/captdam/DD-40/master/ROV/doc/calib-before.jpg "After calibration")
 
 
@@ -196,7 +198,7 @@ There is an internal counter count from 0 to 254 and then starts from 0 again.
 
 For each channel, there is a varibale records the duty of that channel. When the variable is larger than the counter, the channel output high; otherwise, this channel outputs low.
 
-For example, the duty of a channel is 38. Then, the valve connected to this channel will be turned on when the counter is in the range of 0 to 37, and off if the counter is in the range of 38 to 254.
+For example, the duty of a channel is 38. Then, the valve connected to this channel will be turned on when the counter is in the range of 0 to 37, and off if the counter is in the range of 38 to 254. This provides a duty cycle of 38/255.
 
 __I2C routine__
 
