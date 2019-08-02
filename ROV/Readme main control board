@@ -1,0 +1,14 @@
+Main Control Board
+
+introduction
+
+The design group use a suitcase for the main control board.
+For the front half of the suitcase, the design group use a big screen to show the underwater image. The image signal will come back from
+the ROV cemera which is at the head of the ROV by long cable.For the other side of the suit case, the suicase is divide for 3 different 
+part,battary, two small screens and the controlboard and 
+switches.
+
+part 1 : battary
+
+The design use a 12 voltage battary for the power supply for the ROV which is at the top right of the board. The battary will connect 
+the power supply switch which is on the top left of the board. \
