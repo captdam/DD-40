@@ -12,7 +12,7 @@ In the design, the design group is going to build a 40 centimeter long ROV which
 
 As mentioned above, the ROV should be able to operate under 10 meters deep of water. In order to satisfy the requirement, the design group use Schedual 40 PVC pipe for the body of the ROV. The pipe can hold 2MPa pressure, which is equivilent to the pressure of 200 meters deep of water. The cross section of ROV should big enough to contain the control board, which is used to control the valves.
 
-To manuver the ROV under water, valve controlled nozzles are used. 解释一下反作用力怎么推进的。举两个例子，如何上浮，如何抬头。
+To manuver the ROV under water, valve controlled nozzles are used. For example, if the ROV need to float, the bottom of the head and tail nozzles will push pressure to the bottom direction and then the nozzles will give ROV reacting force which direction is up, and then, the ROV will float. Another example is about how to pitch up. For the pitch up, it will use the top of tail nozzle and the bottom of head nozzle. When the valves get the signal from the control system, the head bottom nozzle will push pressure to the bottom and the top of tail nozzle will push the pressure to the top. Then the reacting force will let the ROV pitch up.
 
 ## Implementation
 
@@ -30,17 +30,16 @@ To connect the nozzles and valves, the design group use straps connect all the v
 
 ### Tail hub
 
-Tail上面连接了主控电路板，深度计和通讯线缆。解释一下 The design group use a 10 meter long cable to connect the tail of the ROV and control board,
+For the inside of the tail, the tail cap connect the main control board and depth sensor. For the outside of the tail cap, it uses 10 meter long cable to connect the tail of the ROV and control board,
 
-For the tail sealing, the design group use a mechanical way to seal it. instead of using PVC pipe ending, cap is used, so the ROV could be open easily. 但是缺点是？
-
+For the tail sealing, the design group use a mechanical way to seal it. instead of using PVC pipe ending, cap is used, so the ROV could be open easily. The disadvantage is that the tail of ROV may have leaking problem when the ROV go some very depth because the tail sealing only use the mechical way to seal. 
 ### Trim
 
 After the design group connect all the parts, there is one more things they need to do is to measure the center of buoyancy and the center of the gravity.
 
-In the design the center of gravity should be a little lower than the center of the buoyancy and both of them should around the center of our ROV. The design group have to satisfy the relationship between the buoyancy and the gravity, because when they put the ROV in to test. 解释力矩
+In the design the center of gravity should be a little lower than the center of the buoyancy and both of them should around the center of ROV. The design group have to satisfy the relationship between the buoyancy and the gravity, because when they put the ROV in to test. If the center of gravity is not around of the ROV, the head and tail will give different force when the ROV is operating, because the distance of torque is not same between head and tail and the ROV may have some unexpected moving during the test. 
 
-The ROV have to not only immerse in the water, but also stay in a proper depth in the water. Once the power turn on, they can use the top of the nozzle push pressure and the ROV will dive. If the ROV has some part which is not immersion in the water. The top nozzle will push pressure in to the air and the ROV cannot dive even it have power. Therefore it is necessary to adjust the center of buoyancy and gravity.
+Another thing is that the ROV have to not only immerse in the water, but also stay in a proper depth in the water. Once the power turn on, they can use the top of the nozzle push pressure and the ROV will dive. If the ROV has some part which is not immersion in the water. The top nozzle will push pressure in to the air and the ROV cannot dive even it have power. Therefore it is necessary to adjust the center of buoyancy and gravity.
 
 In the design, the design group can move the position of the valves and pump to adjust the center of gravity to the desired position. Althrough it is possible to using calculation to find out the porper instalation position of valves and pump, but it is requires too much calculation. Instead, the test-retry method has the highest design effiency.
 
@@ -53,7 +52,7 @@ After the design group finish our design, the first thing they need to do is to 
 
 ### Actuactors
 
-They can turn on the pump with a 12 V battery and see whether the ROV move like they thinking or not. 结果动没动？举个例子，比如打开泵和转向喷口的阀门，ROV就怎么移动的。
+They can turn on the pump with a 12 V battery and see whether the ROV move like they thinking or not. The result is ROV can move to every direction successful with appropriate speed. For example, if we open the turn right switch, the head left nozzle and the tail right nozzle will push pressure in to the water, and the ROV turn right in a few second. Our test is successful. 
 
 ### Stage 1 test
 
