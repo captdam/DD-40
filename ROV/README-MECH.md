@@ -30,7 +30,7 @@ To connect the nozzles and valves, the design group use straps connect all the v
 
 ### Tail hub
 
-For the inside of the tail, the tail cap connect the main control board and depth sensor. For the outside of the tail cap, it uses 10 meter long cable to connect the tail of the ROV and control board,
+The tail hub comes with control circuit board, communication cable and depth sensor. The control circuit board is located at the inside od the tail hub, the depth sensor and the communication cable is located outside of the tail hub.
 
 For the tail sealing, the design group use a mechanical way to seal it. instead of using PVC pipe ending, cap is used, so the ROV could be open easily. The disadvantage is that the tail of ROV may have leaking problem when the ROV go some very depth because the tail sealing only use the mechical way to seal. 
 ### Trim
