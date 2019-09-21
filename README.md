@@ -1,3 +1,6 @@
+# [Deprecated]
+This project is __deprecated__. Please see the DD-41 project: https://github.com/captdam/DD-41
+
 # DD-40
 University of Windsor Electrical and Computer Engineering Undergraduate Capstone Project 2019 - Remotely Operated Underwater Vehicle
 
